@@ -1,0 +1,6 @@
+/*
+  Content-Security-Policy: default-src 'none'; style-src 'sha256-C/YOFxCUFANpeBVbwR45jjRoHmEiymijgj2iA7So5y4='; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
