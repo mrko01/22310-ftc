@@ -15,7 +15,7 @@ const timeLabel=e=>e.all_day?'All day':new Intl.DateTimeFormat('en-CA',{timeZone
 function ics(e){const esc=v=>String(v||'').replace(/\\/g,'\\\\').replace(/\r/g,'').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');const stamp=v=>new Date(v).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//EDIT Saffron//Team Calendar//EN','BEGIN:VEVENT','UID:'+e.id+'@22310.ca','DTSTAMP:'+stamp(Date.now()),e.all_day?'DTSTART;VALUE=DATE:'+dateKey(e.starts,true).replace(/-/g,''):'DTSTART:'+stamp(e.starts),e.all_day?'DTEND;VALUE=DATE:'+dateKey(e.ends,true).replace(/-/g,''):'DTEND:'+stamp(e.ends),'SUMMARY:'+esc(e.title),'LOCATION:'+esc(e.location),'END:VEVENT','END:VCALENDAR',''].join('\r\n');}
 const calendar=document.querySelector('[data-events]');
 if(calendar){
- let events=[],loading=false,queued=false,view='agenda',month=new Date(new Date().getFullYear(),new Date().getMonth(),1),failed=false,ready=false;
+ let events=[],loading=false,queued=false,view=calendar.dataset.events==='all'?'month':'agenda',month=new Date(new Date().getFullYear(),new Date().getMonth(),1),failed=false,ready=false;
  const status=document.querySelector('#calendar-status'),filter=document.querySelector('#event-category');
  const updateStatus=(text)=>{if(status)status.textContent=text;};
  const render=()=>{
@@ -37,7 +37,6 @@ if(calendar){
  load();connect();setInterval(()=>{if(!document.hidden){if(socket?.readyState===WebSocket.OPEN)socket.send('ping');else load();}},30000);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});window.addEventListener('pagehide',()=>{clearTimeout(timer);if(socket){socket.onclose=null;socket.close();}});
  filter?.addEventListener('change',render);
- for(const mode of ['agenda','month'])document.querySelector('#'+mode+'-view')?.addEventListener('click',()=>{view=mode;document.querySelector('#agenda-view').setAttribute('aria-pressed',String(mode==='agenda'));document.querySelector('#month-view').setAttribute('aria-pressed',String(mode==='month'));document.querySelector('#month-controls').hidden=mode!=='month';render();});
  document.querySelector('#previous-month')?.addEventListener('click',()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);render();});document.querySelector('#next-month')?.addEventListener('click',()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);render();});document.querySelector('#today-month')?.addEventListener('click',()=>{month=new Date(new Date().getFullYear(),new Date().getMonth(),1);render();});
 }
 const form=document.querySelector('#contact-form');
