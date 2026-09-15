@@ -44,7 +44,7 @@ if(form){let sending=false;const message=document.querySelector('#contact-messag
 
 // The character is a digital team mascot, not the team's competition robot.
 if(document.querySelector('#robot')) {
-  const sceneModule='./mascot.bundle.js?v=3c0a0c8bc463';
+  const sceneModule='./mascot.bundle.js?v=1af4bcee33d5';
   const loadScene=()=>import(sceneModule).catch(()=>import(sceneModule+(sceneModule.includes('?')?'&':'?')+'retry=1'));
   loadScene().then(({startMascot})=>startMascot(()=>paused)).catch(error=>{
     console.warn('The 3D scene could not start; showing the illustrated mascot.',error);

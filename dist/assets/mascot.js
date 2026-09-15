@@ -1,3 +1,5 @@
+import {createSceneProps} from './scene-props.js';
+import {FLOOR_Y} from './props-motion.js';
 import {smoothDamp, poseAt, roverStops, rampHeight, roverMotion, roverDwell, smootherstep} from './motion.js';
 import * as THREE from './vendor/three.module.js';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
@@ -14,7 +16,7 @@ export function startMascot(isPaused) {
   const scene=new THREE.Scene();
   const environment=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);
   const environmentMap=pmrem.fromScene(environment,.03);scene.environment=environmentMap.texture;scene.environmentIntensity=.65;environment.dispose();pmrem.dispose();
-  const camera=new THREE.PerspectiveCamera(31,1,.1,60);camera.position.set(0,1.25,10.6);camera.lookAt(0,.62,0);
+  const camera=new THREE.PerspectiveCamera(31,1,.1,60);camera.position.set(0,1.25,10.6);camera.lookAt(0,.48,0);
   scene.add(new THREE.HemisphereLight(0xfff8ef,0xd4c7b4,1.0));
   const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=false;key.shadow.mapSize.set(1024,1024);key.shadow.normalBias=.025;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=5;scene.add(key);
   const fill=new THREE.DirectionalLight(0xe5efff,.85);fill.position.set(4,1,3);scene.add(fill);
@@ -117,7 +119,7 @@ export function startMascot(isPaused) {
   // Contact shadow anchors the character while preserving the site's light background.
   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=256;shadowCanvas.height=256;
   const sc=shadowCanvas.getContext('2d'),gradient=sc.createRadialGradient(128,128,10,128,128,128);gradient.addColorStop(0,'rgba(77,65,42,.2)');gradient.addColorStop(.45,'rgba(77,65,42,.09)');gradient.addColorStop(1,'rgba(77,65,42,0)');sc.fillStyle=gradient;sc.fillRect(0,0,256,256);
-  const ground=mesh(scene,new THREE.PlaneGeometry(5.8,4.3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),[0,-1.305,.1]);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
+  const ground=mesh(scene,new THREE.PlaneGeometry(5.8,4.3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),[0,FLOOR_Y,.1]);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
 
   // A compact companion follows a bounded route, pausing between short drives.
   const rover=new THREE.Group();scene.add(rover);rover.rotation.order="YXZ";
@@ -133,7 +135,7 @@ export function startMascot(isPaused) {
   cyl(roverHead,.014,.014,.15,[.17,.25,-.07],chrome);ball(roverHead,.044,[.17,.34,-.07],orange);
   const wheels=[];
   for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);wheel.userData.side=side;const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
-  const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,-1.303,.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
+  const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,(FLOOR_Y+.002),.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
   const stops=roverStops;
   const dwell=roverDwell;rover.scale.setScalar(1.14);
@@ -161,15 +163,16 @@ export function startMascot(isPaused) {
   rounded(cargo,[.14,.055,.075],[0,.143,0],graphite,.018);
   // A low test ramp uses the same floor and height profile as the wheel contact solver.
   const rampShape=new THREE.Shape();rampShape.moveTo(-.75,0);rampShape.lineTo(-.22,.18);rampShape.lineTo(.22,.18);rampShape.lineTo(.75,0);rampShape.closePath();
-  const ramp=new THREE.Group();ramp.position.set(2.12,-1.305,.30);ramp.rotation.y=-Math.PI/2;scene.add(ramp);
+  const ramp=new THREE.Group();ramp.position.set(2.12,FLOOR_Y,.30);ramp.rotation.y=-Math.PI/2;scene.add(ramp);
   mesh(ramp,new THREE.ExtrudeGeometry(rampShape,{depth:1.22,bevelEnabled:false,steps:1}),ivory,[0,0,-.61]);
   rounded(ramp,[.43,.006,1.17],[0,.183,0],rubber,.002);
   for(const z of [-.59,.59])rounded(ramp,[.43,.008,.025],[0,.186,z],orange,.003);
   // Reuse materials and the existing wheel geometry; no extra texture downloads.
+  const sceneProps=createSceneProps(scene,camera,ground.material.map);
   const wheelContact=new THREE.Vector3(),wheelRotation=new THREE.Matrix4();
 
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
-  const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));camera.lookAt(0,.62,0);camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
+  const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));camera.lookAt(0,.48,0);camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
   new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;}).observe(canvas);
   canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);}});
   canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}});
@@ -182,6 +185,7 @@ export function startMascot(isPaused) {
     if(document.hidden||!visible){lastTick=t;return;}if(t-lastFrame<24)return;lastFrame=t;
     const dt=lastTick?Math.min(.05,Math.max(0,(t-lastTick)/1000)):1/30;lastTick=t;
     const paused=isPaused();waveClock+=dt;if(!paused)idleTime+=dt;
+    const propFocus=sceneProps.update(dt,paused);
     const sec=idleTime,elapsed=waveClock-waveStart;
     const chapter=Number(document.querySelector('.home-journey')?.dataset.chapter||0);
     const index=Math.min(4,Math.max(0,Math.round(chapter)));
@@ -196,7 +200,7 @@ export function startMascot(isPaused) {
     character.position.y=0;
     head.position.y=1.62+(paused?0:Math.sin(sec*1.2)*.01);
     const lookAtRover=index===1||index===3;
-    head.rotation.y=blend('head.rotation.y',head.rotation.y,lookX*.18+(lookAtRover&&!paused?Math.max(-.30,Math.min(.30,lastRoverX*.14)):0));
+    head.rotation.y=blend('head.rotation.y',head.rotation.y,lookX*.18+(!paused&&propFocus?Math.max(-.32,Math.min(.32,propFocus.x*.15)):(lookAtRover&&!paused?Math.max(-.30,Math.min(.30,lastRoverX*.14)):0)));
     head.rotation.x=blend('head.rotation.x',head.rotation.x,pose[4]+lookY*.1+requestedWave*carry*Math.sin(elapsed*7)*.07+(index===2&&!paused?Math.sin(sec*2)*.055:0));
     head.rotation.z=blend('head.rotation.z',head.rotation.z,pose[5]+(paused?0:Math.sin(sec*.8)*.015));
     upperBody.rotation.x=blend('upperBody.rotation.x',upperBody.rotation.x,pose[6]);
@@ -226,7 +230,7 @@ export function startMascot(isPaused) {
     const contacts=[];
     for(const side of [-1,1])for(const end of [-1,1]){const lx=side*.4*1.14,lz=end*.22*1.14;contacts.push({side,end,height:rampHeight(rx+lx*Math.cos(roverAngle)+lz*Math.sin(roverAngle),rz-lx*Math.sin(roverAngle)+lz*Math.cos(roverAngle))});}
     const avg=items=>items.reduce((sum,p)=>sum+p.height,0)/items.length;
-    rover.position.set(rx,-1.305+avg(contacts),rz);rover.rotation.y=roverAngle;
+    rover.position.set(rx,FLOOR_Y+avg(contacts),rz);rover.rotation.y=roverAngle;
     rover.rotation.x=-Math.atan2(avg(contacts.filter(p=>p.end===1))-avg(contacts.filter(p=>p.end===-1)),.44*1.14);
     rover.rotation.z=Math.atan2(avg(contacts.filter(p=>p.side===1))-avg(contacts.filter(p=>p.side===-1)),.8*1.14);
     const glance=paused?0:Math.sin(aliveTime*1.2)*(speed<.001?.40:.12);
@@ -247,7 +251,7 @@ export function startMascot(isPaused) {
       wheel.position.y=(groundAtWheel-avg(contacts)+.155*1.14-wheelContact.y)/(wheelRotation.elements[5]*1.14);
       wheel.rotation.x+=(speed+wheel.userData.side*turn*.4*1.14)/(.155*1.14);
     }
-    roverShadow.position.set(rx,-1.303+rampHeight(rx,rz),rz);lastRoverX=rx;lastRoverZ=rz;
+    roverShadow.position.set(rx,(FLOOR_Y+.002)+rampHeight(rx,rz),rz);lastRoverX=rx;lastRoverZ=rz;
     // Fade the board only after the hands settle, so it never floats between gestures.
     const handError=Math.abs(arms[0].elbow.rotation.z-2.3)+Math.abs(arms[1].elbow.rotation.z+2.3);
     const boardTarget=carry>.85&&handError<.5?1:0;
@@ -262,5 +266,5 @@ export function startMascot(isPaused) {
     }
     renderer.render(scene,camera);
   });
-  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);renderer.dispose();environmentMap.dispose();});
+  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);sceneProps.dispose();renderer.dispose();environmentMap.dispose();});
 }
