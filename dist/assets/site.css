@@ -29,3 +29,5 @@
 .brand-symbol,.cinematic-home .site-header .brand-symbol{padding:0;border:0;width:44px;height:44px;object-fit:cover;border-radius:6px;background:#f47721;flex:none}
 
 .home-atmosphere{z-index:0}.home-journey{z-index:1}.journey-panel,.home-journey>.section,.home-journey>.cta{scroll-snap-align:start}.home-journey{scroll-snap-type:y proximity}.home-journey>.journey-panel{background:linear-gradient(90deg,#f8f7f3e6,transparent)}
+
+@media(max-width:700px){.home-journey .season-art{max-width:360px}}

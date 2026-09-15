@@ -169,7 +169,9 @@ export function startMascot(isPaused) {
     const dx=rx-lastRoverX,dz=rz-lastRoverZ,speed=Math.hypot(dx,dz);
     if(speed>.00001){const aim=Math.atan2(dx,dz),delta=Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle));roverAngle+=delta*.18;}
     rover.position.set(rx,-1.305,rz);rover.rotation.y=roverAngle;
-    roverHead.rotation.y=-roverAngle+(paused?0:Math.sin(aliveTime*1.7)*.15);
+    const glance=paused?0:Math.sin(aliveTime*1.2)*.22;
+    const headTarget=Math.max(-.43,Math.min(.43,glance));
+    roverHead.rotation.y+=(headTarget-roverHead.rotation.y)*.09;
     roverHead.rotation.z=paused?0:Math.sin(aliveTime*2)*.035;
     chassis.rotation.z=paused?0:Math.sin(aliveTime*10)*Math.min(speed,.015);
     for(const e of roverEyes)e.scale.y=!paused&&aliveTime%4.8<.12?.15:1;
