@@ -1,6 +1,8 @@
 /*
-  Content-Security-Policy: default-src 'none'; style-src 'sha256-C/YOFxCUFANpeBVbwR45jjRoHmEiymijgj2iA7So5y4='; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-  Referrer-Policy: no-referrer
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-7VeP2jypDdA3UCkcsZTb4Hb0ZRb609CJGpGpSdEhu+A=' 'sha256-YHLhySnkBLcCmJAXWvRQtDoVOz8eEVEJ40NNGXGoivo=' 'sha256-/3PYAlSPLuVSBPmPAqITBOtk525mY8uaTH6EyX59t1w=' 'sha256-N8Tr8UOWXLYzVMyNS6XC6izzkyiC1f1TWhY+XlSDOmc='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+/assets/*
+  Cache-Control: public, max-age=3600

@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://22310.ca/sitemap.xml
