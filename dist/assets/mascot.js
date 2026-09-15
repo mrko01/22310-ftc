@@ -1,3 +1,4 @@
+import {smoothDamp, poseAt, roverStops, rampHeight} from './motion.js';
 import * as THREE from './vendor/three.module.js';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
@@ -119,8 +120,8 @@ export function startMascot(isPaused) {
   const ground=mesh(scene,new THREE.PlaneGeometry(5.8,4.3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),[0,-1.305,.1]);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
 
   // A compact companion follows a bounded route, pausing between short drives.
-  const rover=new THREE.Group();scene.add(rover);
-  const chassis=rounded(rover,[.72,.22,.60],[0,.24,0],orange,.10);
+  const rover=new THREE.Group();scene.add(rover);rover.rotation.order="YXZ";
+  const chassis=rounded(rover,[.72,.22,.82],[0,.24,0],orange,.10);
   rounded(rover,[.59,.075,.56],[0,.08,0],graphite,.035);
   const roverHead=new THREE.Group();roverHead.position.set(0,.55,.10);rover.add(roverHead);
   rounded(roverHead,[.66,.43,.48],[0,0,0],orange,.12);
@@ -134,66 +135,111 @@ export function startMascot(isPaused) {
   for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);wheel.userData.side=side;const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
   const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,-1.303,.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
-  const stops=[[2.05,1.25],[2.2,-.9],[1.85,1.65],[-1.8,1.65],[-2.2,-1.0],[-2.05,1.4],[2.05,1.25]];
+  const stops=roverStops;
   const dwell=[.45,1.2,.3,.85,.55,1.1];rover.scale.setScalar(1.14);
-  let roverAngle=0,lastRoverX=1.18,lastRoverZ=.9,aliveTime=0,lastTick=0;
+  let roverAngle=0,lastRoverX=stops[0][0],lastRoverZ=stops[0][1],aliveTime=0,lastTick=0,idleTime=0,waveClock=0,roverTempo=1;
+  // The design board sits between the hands, with a schematic drawn for this mascot.
+  const planCanvas=document.createElement('canvas');planCanvas.width=512;planCanvas.height=384;
+  const pc=planCanvas.getContext('2d');pc.fillStyle='#fcf5df';pc.fillRect(0,0,512,384);
+  pc.strokeStyle='#e6dbc0';pc.lineWidth=1;for(let x=24;x<512;x+=24){pc.beginPath();pc.moveTo(x,0);pc.lineTo(x,384);pc.stroke();}for(let y=24;y<384;y+=24){pc.beginPath();pc.moveTo(0,y);pc.lineTo(512,y);pc.stroke();}
+  pc.strokeStyle='#c35b24';pc.lineWidth=7;pc.strokeRect(150,90,205,150);pc.strokeRect(115,115,35,100);pc.strokeRect(355,115,35,100);pc.beginPath();pc.arc(252,165,46,0,Math.PI*2);pc.stroke();
+  pc.lineWidth=3;pc.beginPath();pc.moveTo(150,280);pc.lineTo(355,280);pc.moveTo(150,266);pc.lineTo(150,295);pc.moveTo(355,266);pc.lineTo(355,295);pc.stroke();
+  pc.strokeStyle='#566754';pc.lineWidth=3;pc.beginPath();pc.moveTo(40,40);pc.lineTo(95,40);pc.moveTo(40,52);pc.lineTo(78,52);pc.stroke();
+  const planTexture=new THREE.CanvasTexture(planCanvas);planTexture.colorSpace=THREE.SRGBColorSpace;
+  const board=new THREE.Group();scene.add(board);
+  const boardCase=rounded(board,[.96,.71,.045],[0,0,0],ivory.clone(),.018);
+  mesh(board,new THREE.PlaneGeometry(.88,.65),new THREE.MeshStandardMaterial({map:planTexture,roughness:.9,side:THREE.DoubleSide}),[0,0,.025]);
+  rounded(board,[.18,.045,.025],[0,.325,.038],chrome.clone(),.008);
+  const boardMaterials=[];board.traverse(o=>{if(o.isMesh){o.material.transparent=true;o.material.opacity=0;boardMaterials.push(o.material);}});
+  const leftGrip=new THREE.Vector3(),rightGrip=new THREE.Vector3(),boardRotation=new THREE.Quaternion();
+  let boardAmount=0;
+  // The rover carries a securely mounted parts box on its rear deck.
+  const cargo=new THREE.Group();cargo.position.set(0,.475,-.30);rover.add(cargo);
+  rounded(cargo,[.34,.23,.23],[0,0,0],ivory,.04);
+  rounded(cargo,[.35,.03,.24],[0,.10,0],orangeDark,.01);
+  rounded(cargo,[.045,.245,.24],[0,0,0],orange,.012);
+  rounded(cargo,[.14,.055,.075],[0,.143,0],graphite,.018);
+  // A low test ramp uses the same floor and height profile as the wheel contact solver.
+  const rampShape=new THREE.Shape();rampShape.moveTo(-1.2,0);rampShape.lineTo(-.35,.22);rampShape.lineTo(.35,.22);rampShape.lineTo(1.2,0);rampShape.closePath();
+  const ramp=mesh(scene,new THREE.ExtrudeGeometry(rampShape,{depth:1.25,bevelEnabled:false,steps:1}),ivory,[0,-1.305,1.025]);
+  rounded(scene,[.68,.006,1.21],[0,-1.305+.223,1.65],rubber,.002);
+  for(const z of [1.055,2.245])rounded(scene,[.68,.008,.035],[0,-1.305+.226,z],orange,.003);
+
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
   const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));camera.lookAt(0,.62,0);camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
   new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;}).observe(canvas);
   canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);}});
   canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}});
   canvas.addEventListener('pointerleave',()=>{lookX=0;lookY=0;});for(const type of ['pointerup','pointercancel'])canvas.addEventListener(type,()=>drag=false);
-  const wave=()=>{waveStart=performance.now();};document.querySelector('#explode-toggle')?.addEventListener('click',wave);
+  const wave=()=>{waveStart=waveClock;};document.querySelector('#explode-toggle')?.addEventListener('click',wave);
   canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','w','W'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft')targetAngle-=.2;else if(e.key==='ArrowRight')targetAngle+=.2;else wave();}});
   const ease=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
-  // Scroll chapters are authored poses, blended across all of the articulated joints.
-  // [left shoulder, left elbow, right shoulder, right elbow, head pitch, head tilt, torso lean]
-  const poses=[[-.12,0,1.0,1.12,0,-.06,0],[-1.58,-1.80,.10,0,.04,-.12,-.025],[-.90,-.45,.90,.45,0,0,0],[-.15,0,.62,.65,.26,.06,.07],[-.72,-.35,.76,.40,0,-.04,0],[-.4,-.7,.2,.6,.13,.025,.025],[-.12,0,1.04,1.14,0,-.08,0]];
-  let poseChapter=0;
+  const velocities=new Map();
   renderer.setAnimationLoop(t=>{
-    if(document.hidden||!visible||t-lastFrame<24)return;lastFrame=t;
-    const sec=t/1000,paused=isPaused(),progress=Number(document.querySelector('.home-journey')?.dataset.progress||0),elapsed=(t-waveStart)/1000;
+    if(document.hidden||!visible){lastTick=t;return;}if(t-lastFrame<24)return;lastFrame=t;
+    const dt=lastTick?Math.min(.05,Math.max(0,(t-lastTick)/1000)):1/30;lastTick=t;
+    const paused=isPaused();waveClock+=dt;if(!paused)idleTime+=dt;
+    const sec=idleTime,elapsed=waveClock-waveStart;
     const chapter=Number(document.querySelector('.home-journey')?.dataset.chapter||0);
-    poseChapter+=(chapter-poseChapter)*.10;
-    const index=Math.min(6,Math.floor(poseChapter)),mix=ease(poseChapter-index),next=Math.min(6,index+1);
-    const pose=poses[index].map((v,i)=>v+(poses[next][i]-v)*mix);
-    const greeting=(index===0||index===6)&&!paused;
-    const waveWeight=ease(elapsed/.45)*(1-ease((elapsed-1.9)/.55));
+    const index=Math.min(4,Math.max(0,Math.round(chapter)));
+    const carry=Math.max(0,1-Math.abs(chapter-1));
+    const pose=poseAt(chapter);
+    const greeting=(index===0||index===4)&&!paused;
+    const requestedWave=ease(elapsed/.45)*(1-ease((elapsed-1.9)/.55));
+    const waveWeight=requestedWave*(1-carry);
     const waveOscillation=Math.sin(Math.max(0,elapsed-.4)*12)*.2*waveWeight;
-    const blend=(current,target)=>current+(target-current)*.12;
-    character.rotation.y=blend(character.rotation.y,targetAngle+(paused?0:Math.sin(poseChapter*.7)*.14));
+    const blend=(key,current,target,speed=3)=>{const result=smoothDamp(current,target,velocities.get(key)||0,dt,.34,speed);velocities.set(key,result.velocity);return result.value;};
+    character.rotation.y=blend('character.rotation.y',character.rotation.y,targetAngle+(paused?0:Math.sin(chapter*.7)*.14));
     character.position.y=0;
     head.position.y=1.62+(paused?0:Math.sin(sec*1.2)*.01);
-    const lookAtRover=index===3||index===5;
-    head.rotation.y=blend(head.rotation.y,lookX*.18+(lookAtRover&&!paused?Math.max(-.30,Math.min(.30,lastRoverX*.14)):0));
-    head.rotation.x=blend(head.rotation.x,pose[4]+lookY*.1+(index===4&&!paused?Math.sin(sec*2)*.055:0));
-    head.rotation.z=blend(head.rotation.z,pose[5]+(paused?0:Math.sin(sec*.8)*.015));
-    upperBody.rotation.x=blend(upperBody.rotation.x,pose[6]);
-    upperBody.rotation.z=blend(upperBody.rotation.z,index===1?-.045:0);
-    arms[0].shoulder.rotation.z=blend(arms[0].shoulder.rotation.z,pose[0]);
-    arms[0].elbow.rotation.z=blend(arms[0].elbow.rotation.z,pose[1]);
-    arms[0].wrist.rotation.z=index===1?.22:0;
-    arms[1].shoulder.rotation.z=blend(arms[1].shoulder.rotation.z,pose[2]*(1-waveWeight)+1.15*waveWeight);
-    arms[1].elbow.rotation.z=blend(arms[1].elbow.rotation.z,pose[3]*(1-waveWeight)+1.12*waveWeight);
-    arms[1].wrist.rotation.z=waveOscillation+(greeting?Math.sin(sec*5)*.19:0);
-    for(const eye of eyes)eye.scale.y=!paused&&sec%5.7<.11?.15:1;
-    const dt=Math.min(.05,Math.max(0,(t-lastTick)/1000));lastTick=t;if(!paused)aliveTime+=dt*(index===3?.65:index===6?1.22:1);
+    const lookAtRover=index===1||index===3;
+    head.rotation.y=blend('head.rotation.y',head.rotation.y,lookX*.18+(lookAtRover&&!paused?Math.max(-.30,Math.min(.30,lastRoverX*.14)):0));
+    head.rotation.x=blend('head.rotation.x',head.rotation.x,pose[4]+lookY*.1+requestedWave*carry*Math.sin(elapsed*7)*.07+(index===2&&!paused?Math.sin(sec*2)*.055:0));
+    head.rotation.z=blend('head.rotation.z',head.rotation.z,pose[5]+(paused?0:Math.sin(sec*.8)*.015));
+    upperBody.rotation.x=blend('upperBody.rotation.x',upperBody.rotation.x,pose[6]);
+    upperBody.rotation.z=blend('upperBody.rotation.z',upperBody.rotation.z,index===1?-.045:0);
+    for(let side=0;side<2;side++){arms[side].shoulder.rotation.x=blend('shoulderForward'+side,arms[side].shoulder.rotation.x,-.4*carry);arms[side].elbow.rotation.x=blend('elbowForward'+side,arms[side].elbow.rotation.x,carry);}
+    arms[0].shoulder.rotation.z=blend('arms[0].shoulder.rotation.z',arms[0].shoulder.rotation.z,pose[0]);
+    arms[0].elbow.rotation.z=blend('arms[0].elbow.rotation.z',arms[0].elbow.rotation.z,pose[1]);
+    arms[0].wrist.rotation.z=blend('leftWrist',arms[0].wrist.rotation.z,0);
+    arms[1].shoulder.rotation.z=blend('arms[1].shoulder.rotation.z',arms[1].shoulder.rotation.z,pose[2]*(1-waveWeight)+1.15*waveWeight);
+    arms[1].elbow.rotation.z=blend('arms[1].elbow.rotation.z',arms[1].elbow.rotation.z,pose[3]*(1-waveWeight)+1.12*waveWeight);
+    arms[1].wrist.rotation.z=blend('rightWrist',arms[1].wrist.rotation.z,waveOscillation+(greeting?Math.sin(sec*5)*.19:0));
+    for(const eye of eyes)eye.scale.y=!paused&&sec%5.7<.18?1-.84*Math.sin(Math.PI*(sec%5.7)/.18):1;
+    roverTempo+=( (index===1?.65:index===4?1.22:1)-roverTempo)*(1-Math.exp(-3*dt));if(!paused)aliveTime+=dt*roverTempo;
     const segment=Math.floor(aliveTime/3.5)%6,phase=aliveTime%3.5;
     const from=stops[segment],to=stops[segment+1],drive=ease((phase-dwell[segment])/(3.5-dwell[segment]));
     // Each leg has clear space around the mascot; no path crosses its footprint.
     const rx=from[0]+(to[0]-from[0])*drive,rz=from[1]+(to[1]-from[1])*drive;
     const dx=rx-lastRoverX,dz=rz-lastRoverZ,speed=Math.hypot(dx,dz);
-    const aim=Math.atan2(to[0]-from[0],to[1]-from[1]),turn=paused?0:Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle))*.18;
+    const aim=Math.atan2(to[0]-from[0],to[1]-from[1]),turn=paused?0:Math.max(-2.8*dt,Math.min(2.8*dt,Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle))*(1-Math.exp(-8*dt))));
     roverAngle+=turn;
-    rover.position.set(rx,-1.305,rz);rover.rotation.y=roverAngle;
+    const contacts=[];
+    for(const side of [-1,1])for(const end of [-1,1]){const lx=side*.4*1.14,lz=end*.22*1.14;contacts.push({side,end,height:rampHeight(rx+lx*Math.cos(roverAngle)+lz*Math.sin(roverAngle),rz-lx*Math.sin(roverAngle)+lz*Math.cos(roverAngle))});}
+    const avg=items=>items.reduce((sum,p)=>sum+p.height,0)/items.length;
+    rover.position.set(rx,-1.305+avg(contacts),rz);rover.rotation.y=roverAngle;
+    rover.rotation.x=-Math.atan2(avg(contacts.filter(p=>p.end===1))-avg(contacts.filter(p=>p.end===-1)),.44*1.14);
+    rover.rotation.z=Math.atan2(avg(contacts.filter(p=>p.side===1))-avg(contacts.filter(p=>p.side===-1)),.8*1.14);
     const glance=paused?0:Math.sin(aliveTime*1.2)*(speed<.001?.40:.12);
     const headTarget=Math.max(-.43,Math.min(.43,glance));
-    roverHead.rotation.y+=(headTarget-roverHead.rotation.y)*.09;
+    roverHead.rotation.y=blend('roverHead',roverHead.rotation.y,headTarget,1.2);
     roverHead.rotation.z=paused?0:Math.sin(aliveTime*2)*.035;
-    chassis.rotation.z=paused?0:Math.sin(aliveTime*10)*Math.min(speed,.015);
-    for(const e of roverEyes)e.scale.y=!paused&&aliveTime%4.8<.12?.15:1;
+    chassis.rotation.z=blend('chassisLean',chassis.rotation.z,paused?0:Math.sin(aliveTime*10)*Math.min(speed,.015));
+    for(const e of roverEyes)e.scale.y=!paused&&aliveTime%4.8<.16?1-.84*Math.sin(Math.PI*(aliveTime%4.8)/.16):1;
     for(const wheel of wheels)wheel.rotation.x+=(speed+wheel.userData.side*turn*.4)/(.155*1.14);
     roverShadow.position.set(rx,-1.303,rz);lastRoverX=rx;lastRoverZ=rz;
+    // Fade the board only after the hands settle, so it never floats between gestures.
+    const handError=Math.abs(arms[0].elbow.rotation.z-2.3)+Math.abs(arms[1].elbow.rotation.z+2.3);
+    const boardTarget=carry>.85&&handError<.5?1:0;
+    boardAmount=blend('boardOpacity',boardAmount,boardTarget,4);
+    board.visible=boardAmount>.005;
+    if(board.visible){
+      character.updateMatrixWorld(true);
+      arms[0].wrist.localToWorld(leftGrip.set(0,-.17,.04));arms[1].wrist.localToWorld(rightGrip.set(0,-.17,.04));
+      board.position.copy(leftGrip).add(rightGrip).multiplyScalar(.5);board.position.y+=.14;board.position.z+=.055;
+      upperBody.getWorldQuaternion(boardRotation);board.quaternion.copy(boardRotation);
+      for(const material of boardMaterials)material.opacity=boardAmount;
+    }
     renderer.render(scene,camera);
   });
   resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);renderer.dispose();environmentMap.dispose();});

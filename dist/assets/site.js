@@ -28,7 +28,7 @@ if(calendar){
    const start=new Date(month);start.setDate(1-start.getDay());
    const days=Array.from({length:42},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const matches=data.filter(e=>dateKey(e.starts,!!e.all_day)<=key&&dateKey(e.ends-1,!!e.all_day)>=key);return `<div class="calendar-day ${d.getMonth()!==month.getMonth()?'outside':''} ${key===dateKey(Date.now())?'today':''}"><span>${d.getDate()}</span>${matches.map(e=>`<a class="calendar-item" href="#" data-ics="${escape(e.id)}" title="${escape(e.title+' · '+timeLabel(e)+' · Add to calendar')}">${escape(e.title)}</a>`).join('')}</div>`;});
    calendar.innerHTML=`<div class="calendar-grid">${['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d=>`<div class="calendar-weekday">${d}</div>`).join('')}${days.join('')}</div>`;
-  } else calendar.innerHTML=data.length?data.map(e=>`<article class="event-row"><div class="event-date"><strong>${datePart(e.starts,'day',!!e.all_day)}</strong><span>${datePart(e.starts,'month',!!e.all_day)}</span></div><div><h3>${escape(e.title)}</h3><p>${escape(timeLabel(e))}${e.location?' · '+escape(e.location):''} · ${escape(e.category)}</p></div><a href="#" data-ics="${escape(e.id)}" aria-label="Add ${escape(e.title)} to your calendar">Add to calendar ↗</a></article>`).join(''):`<div class="event-empty"><h3>${filter&&filter.value!=='all'?'No events in this category.':'The season is just getting started.'}</h3><p>Our next public dates will appear here when they’re announced. Check back soon or <a class="text-link" href="/contact/">get in touch ↗</a>.</p></div>`;
+  } else calendar.innerHTML=data.length?data.map(e=>`<article class="event-row"><div class="event-date"><strong>${datePart(e.starts,'day',!!e.all_day)}</strong><span>${datePart(e.starts,'month',!!e.all_day)}</span></div><div><h3>${escape(e.title)}</h3><p>${escape(timeLabel(e))}${e.location?' · '+escape(e.location):''} · ${escape(e.category)}</p></div><a href="#" data-ics="${escape(e.id)}" aria-label="Add ${escape(e.title)} to your calendar">Add to calendar ↗</a></article>`).join(''):`<div class="event-empty"><h3>${filter&&filter.value!=='all'?'No events in this category.':'No public events scheduled yet.'}</h3><p>New dates will appear here. You can also <a class="text-link" href="/contact/">get in touch ↗</a>.</p></div>`;
   calendar.querySelectorAll('[data-ics]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();const e=events.find(e=>e.id===a.dataset.ics);if(!e)return;const url=URL.createObjectURL(new Blob([ics(e)],{type:'text/calendar'})),download=document.createElement('a');download.href=url;download.download='22310-event.ics';download.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}));
  };
  async function load(){if(loading){queued=true;return;}loading=true;try{const r=await fetch(API+'/api/public/calendar');if(!r.ok)throw new Error();events=await r.json();failed=false;ready=true;render();if(!socket||socket.readyState!==WebSocket.OPEN)updateStatus('Calendar synced · reconnecting live updates');}catch{failed=true;render();updateStatus('Schedule unavailable · retrying');}finally{loading=false;if(queued){queued=false;load();}}}
@@ -45,7 +45,10 @@ if(form){let sending=false;const message=document.querySelector('#contact-messag
 
 // The character is a digital team mascot, not the team's competition robot.
 if(document.querySelector('#robot')) {
-  import('./mascot.bundle.js').then(({startMascot})=>startMascot(()=>paused)).catch(()=>{
+  const sceneModule='./mascot.bundle.js?v=05ecece7a862';
+  const loadScene=()=>import(sceneModule).catch(()=>import(sceneModule+(sceneModule.includes('?')?'&':'?')+'retry=1'));
+  loadScene().then(({startMascot})=>startMascot(()=>paused)).catch(error=>{
+    console.warn('The 3D scene could not start; showing the illustrated mascot.',error);
     const fallback=document.querySelector('.mascot-fallback');if(fallback)fallback.hidden=false;
     document.querySelector('#robot').hidden=true;
     document.querySelector('#explode-toggle').hidden=true;

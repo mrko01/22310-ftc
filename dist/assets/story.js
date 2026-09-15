@@ -1,17 +1,17 @@
 const story=document.querySelector('.home-journey');
 if(story){
  const canvas=document.querySelector('#spark-field'),ctx=canvas.getContext('2d'),chapters=[...document.querySelectorAll('[data-chapter]')],dots=[...document.querySelectorAll('.story-progress span')],mascot=document.querySelector('.mascot-stage');
- let width=0,height=0,progress=0,target=0,last=0,pointerX=0,pointerY=0;
+ let width=0,height=0,progress=0,target=0,last=0,pointerX=0,pointerY=0,activeTime=0;
  const reduced=matchMedia('(prefers-reduced-motion:reduce)'),clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
  const resize=()=>{const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio,1.5);width=r.width;height=r.height;canvas.width=width*dpr;canvas.height=height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);};new ResizeObserver(resize).observe(canvas);
  const panels=[...story.querySelectorAll(':scope > .journey-panel,:scope > .section,:scope > .cta')];
- function scroll(){target=clamp(story.scrollTop/Math.max(1,story.scrollHeight-story.clientHeight));let index=0;while(index<panels.length-1&&story.scrollTop>=panels[index+1].offsetTop)index++;const span=index<panels.length-1?panels[index+1].offsetTop-panels[index].offsetTop:panels[index].offsetHeight;story.dataset.chapter=String(index+clamp((story.scrollTop-panels[index].offsetTop)/span));}story.addEventListener('scroll',scroll,{passive:true});addEventListener('resize',scroll);scroll();
+ function scroll(){target=clamp(story.scrollTop/Math.max(1,story.scrollHeight-story.clientHeight));let index=0;while(index<panels.length-1&&story.scrollTop>=panels[index+1].offsetTop)index++;const span=index<panels.length-1?panels[index+1].offsetTop-panels[index].offsetTop:panels[index].offsetHeight;story.dataset.chapter=String(index+clamp(((story.scrollTop-panels[index].offsetTop)/span-.5)/.5));}story.addEventListener('scroll',scroll,{passive:true});addEventListener('resize',scroll);scroll();
  mascot.addEventListener('wheel',e=>{story.scrollBy({top:e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?story.clientHeight:1),behavior:'instant'});e.preventDefault();},{passive:false});
  story.addEventListener('pointermove',e=>{pointerX=(e.clientX/innerWidth-.5)*14;pointerY=(e.clientY/innerHeight-.5)*10;},{passive:true});
  // Deterministic ember field: a loose cloud resolves into five gently orbiting streams.
  let seed=22310;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
  const particles=Array.from({length:innerWidth<700?480:950},(_,i)=>({u:rand(),v:rand(),depth:rand(),size:rand(),angle:rand()*Math.PI*2,arm:i%5,phase:rand()*6.28}));
- function frame(time){requestAnimationFrame(frame);if(document.hidden||time-last<30)return;last=time;const paused=reduced.matches||document.documentElement.classList.contains('pause-all');progress+=(target-progress)*.085;story.dataset.progress=String(progress);const p=paused?0:progress,seconds=paused?0:time*.00004;
+ function frame(time){requestAnimationFrame(frame);if(document.hidden){last=time;return;}if(time-last<30)return;const dt=Math.min(.05,(time-last)/1000);last=time;const paused=reduced.matches||document.documentElement.classList.contains('pause-all');progress+=(target-progress)*(1-Math.exp(-3*dt));if(!paused)activeTime+=dt;story.dataset.progress=String(progress);const p=progress,seconds=activeTime*.04;
   ctx.clearRect(0,0,width,height);ctx.fillStyle='#f8f7f3';ctx.fillRect(0,0,width,height);
   const cx=width*(.76+.035*Math.sin(p*6.28)),cy=height*(.51+.04*Math.sin(p*3)),radius=Math.max(width,height)*.65;
   const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,radius);glow.addColorStop(0,`rgba(239,147,66,${.12+p*.06})`);glow.addColorStop(.43,'rgba(243,200,159,.05)');glow.addColorStop(1,'rgba(248,247,243,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,width,height);

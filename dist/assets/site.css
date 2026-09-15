@@ -31,3 +31,5 @@
 .home-atmosphere{z-index:0}.home-journey{z-index:1}.journey-panel,.home-journey>.section,.home-journey>.cta{scroll-snap-align:start}.home-journey{scroll-snap-type:y proximity}.home-journey>.journey-panel{background:linear-gradient(90deg,#f8f7f3e6,transparent)}
 
 @media(max-width:700px){.home-journey .season-art{max-width:360px}}
+
+.journey-panel h1{font-size:clamp(72px,7.8vw,120px);font-weight:700;line-height:.94;letter-spacing:-.065em}.journey-panel.chapter-brand p{font-size:14px;color:#687064;margin-top:28px}.journey-panel.chapter-brand .story-link{margin-top:32px}.home-journey .team-intro .text-link{display:inline-flex;margin-top:24px}@media(max-width:700px){.journey-panel h1{font-size:clamp(64px,17vw,92px)}.journey-panel.chapter-brand{padding-top:35px;padding-bottom:50px}.journey-panel.chapter-brand p{font-size:13px;margin-top:23px}}
