@@ -136,8 +136,8 @@ export function startMascot(isPaused) {
   const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,-1.303,.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
   const stops=roverStops;
-  const dwell=[.45,1.2,.3,.85,.55,1.1];rover.scale.setScalar(1.14);
-  let roverAngle=0,lastRoverX=stops[0][0],lastRoverZ=stops[0][1],aliveTime=0,lastTick=0,idleTime=0,waveClock=0,roverTempo=1;
+  const dwell=[.8,1.0,.65,.8,.9,.7];rover.scale.setScalar(1.14);
+  let roverAngle=0,lastRoverX=stops[0][0],lastRoverZ=stops[0][1],aliveTime=0,routeTime=0,lastTick=0,idleTime=0,waveClock=0,roverTempo=1;
   // The design board sits between the hands, with a schematic drawn for this mascot.
   const planCanvas=document.createElement('canvas');planCanvas.width=512;planCanvas.height=384;
   const pc=planCanvas.getContext('2d');pc.fillStyle='#fcf5df';pc.fillRect(0,0,512,384);
@@ -206,8 +206,13 @@ export function startMascot(isPaused) {
     arms[1].elbow.rotation.z=blend('arms[1].elbow.rotation.z',arms[1].elbow.rotation.z,pose[3]*(1-waveWeight)+1.12*waveWeight);
     arms[1].wrist.rotation.z=blend('rightWrist',arms[1].wrist.rotation.z,waveOscillation+(greeting?Math.sin(sec*5)*.19:0));
     for(const eye of eyes)eye.scale.y=!paused&&sec%5.7<.18?1-.84*Math.sin(Math.PI*(sec%5.7)/.18):1;
-    roverTempo+=( (index===1?.65:index===4?1.22:1)-roverTempo)*(1-Math.exp(-3*dt));if(!paused)aliveTime+=dt*roverTempo;
-    const segment=Math.floor(aliveTime/3.5)%6,phase=aliveTime%3.5;
+    roverTempo+=( (index===1?.65:index===4?1.22:1)-roverTempo)*(1-Math.exp(-3*dt));
+    const currentLeg=Math.floor(routeTime/3.5)%6,currentPhase=routeTime%3.5;
+    const departure=Math.atan2(stops[currentLeg+1][0]-stops[currentLeg][0],stops[currentLeg+1][1]-stops[currentLeg][1]);
+    const headingError=Math.abs(Math.atan2(Math.sin(departure-roverAngle),Math.cos(departure-roverAngle)));
+    const waitingToSteer=currentPhase>=dwell[currentLeg]&&currentPhase<dwell[currentLeg]+.08&&headingError>.14;
+    if(!paused){aliveTime+=dt; if(!waitingToSteer)routeTime+=dt*roverTempo;}
+    const segment=Math.floor(routeTime/3.5)%6,phase=routeTime%3.5;
     const from=stops[segment],to=stops[segment+1],drive=ease((phase-dwell[segment])/(3.5-dwell[segment]));
     // Each leg has clear space around the mascot; no path crosses its footprint.
     const rx=from[0]+(to[0]-from[0])*drive,rz=from[1]+(to[1]-from[1])*drive;
