@@ -7,7 +7,7 @@
 - Mascot: original procedural orange comic robot character created for the website. It does not depict a built competition robot. Rendered using Three.js (MIT license).
 
 - Number logo: original image generated with the built-in image generation tool. Final asset `dist/assets/22310-logo.png`; prompt: a solid saffron-orange square with precisely centered bold condensed charcoal “22310”, no extra symbols, text, texture or effects. Favicon and touch-icon derivatives are resized versions.
-- Interactive scene: original standing mascot and rover companion, sharing a common floor; rover uses a bounded oval route with eased starts and stops. Reduced motion and the pause control stop ambient animation.
+- Interactive scene: original standing mascot and rover companion, sharing a common floor; rover uses varied, bounded routes with eased starts and stops. Reduced motion and the pause control stop ambient animation. Scroll chapters blend greeting, thinking, open-arm, curious and farewell poses across the upper-body joints. The rover has limited head rotation and a shared ground height.
 
 ## Build and deployment
 `npm ci && npm run build` bundles and minifies the editable `dist/assets/mascot.js` source and local Three.js dependencies into `dist/assets/mascot.bundle.js`. Cloudflare Pages serves the checked-in `dist` folder. Both public and private sites remain separate deployments. Public calendar events must be explicitly marked “Show on 22310.ca” in the authenticated calendar.

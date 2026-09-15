@@ -4,7 +4,8 @@ if(story){
  let width=0,height=0,progress=0,target=0,last=0,pointerX=0,pointerY=0;
  const reduced=matchMedia('(prefers-reduced-motion:reduce)'),clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
  const resize=()=>{const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio,1.5);width=r.width;height=r.height;canvas.width=width*dpr;canvas.height=height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);};new ResizeObserver(resize).observe(canvas);
- function scroll(){target=clamp(story.scrollTop/Math.max(1,story.scrollHeight-story.clientHeight));}story.addEventListener('scroll',scroll,{passive:true});addEventListener('resize',scroll);scroll();
+ const panels=[...story.querySelectorAll(':scope > .journey-panel,:scope > .section,:scope > .cta')];
+ function scroll(){target=clamp(story.scrollTop/Math.max(1,story.scrollHeight-story.clientHeight));let index=0;while(index<panels.length-1&&story.scrollTop>=panels[index+1].offsetTop)index++;const span=index<panels.length-1?panels[index+1].offsetTop-panels[index].offsetTop:panels[index].offsetHeight;story.dataset.chapter=String(index+clamp((story.scrollTop-panels[index].offsetTop)/span));}story.addEventListener('scroll',scroll,{passive:true});addEventListener('resize',scroll);scroll();
  mascot.addEventListener('wheel',e=>{story.scrollBy({top:e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?story.clientHeight:1),behavior:'instant'});e.preventDefault();},{passive:false});
  story.addEventListener('pointermove',e=>{pointerX=(e.clientX/innerWidth-.5)*14;pointerY=(e.clientY/innerHeight-.5)*10;},{passive:true});
  // Deterministic ember field: a loose cloud resolves into five gently orbiting streams.

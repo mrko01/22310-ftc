@@ -27,6 +27,7 @@ export function startMascot(isPaused) {
   const chrome=new THREE.MeshStandardMaterial({color:0x8e9e94,roughness:.3,metalness:.88});
   const eyeMaterial=new THREE.MeshStandardMaterial({color:0xfff7db,emissive:0xffdb88,emissiveIntensity:.18,roughness:.4});
   const character=new THREE.Group();scene.add(character);character.rotation.set(0,-.25,0);
+  const upperBody=new THREE.Group();character.add(upperBody);
   function mesh(parent,geometry,material,position=[0,0,0]){const object=new THREE.Mesh(geometry,material);object.position.set(...position);object.castShadow=true;object.receiveShadow=true;parent.add(object);return object;}
   const geometryCache=new Map();
   const geometry=(key,create)=>{if(!geometryCache.has(key))geometryCache.set(key,create());return geometryCache.get(key);};
@@ -36,7 +37,7 @@ export function startMascot(isPaused) {
   const ring=(parent,r,tube,position,material)=>mesh(parent,new THREE.TorusGeometry(r,tube,12,48),material,position);
   function bolt(parent,position,r=.04){const cap=cyl(parent,r,r,.017,position,chrome);cap.rotation.x=Math.PI/2;rounded(parent,[r*.8,.009,.006],[position[0],position[1],position[2]+.012],graphite,.002);}
   // The head is a layered enclosure, with a soft ivory gasket around its inset display.
-  const head=new THREE.Group();head.position.set(0,1.62,.025);character.add(head);
+  const head=new THREE.Group();head.position.set(0,1.62,.025);upperBody.add(head);
   rounded(head,[1.9,1.36,1.17],[0,0,0],orange,.27);
   rounded(head,[1.91,.7,.83],[0,-.035,-.095],orangeDark,.17);
   rounded(head,[1.76,1.2,.38],[0,.005,.427],orange,.23);
@@ -66,17 +67,17 @@ export function startMascot(isPaused) {
   ball(head,.125,[.28,1.16,-.06],orange);
   ball(head,.054,[.255,1.193,.027],ivory,[.8,.65,.22]);
   // Neck, compact torso and an inset number plate.
-  cyl(character,.21,.24,.31,[0,.76,0],chrome);
-  for(const y of [.67,.76,.85])cyl(character,.24,.24,.03,[0,y,0],graphite);
-  rounded(character,[1.29,1.16,.9],[0,.02,0],orange,.25);
-  rounded(character,[1.15,.17,.79],[0,-.52,-.01],orangeDark,.07);
-  rounded(character,[.87,.58,.055],[0,.15,.457],ivory,.10);
+  cyl(upperBody,.21,.24,.31,[0,.76,0],chrome);
+  for(const y of [.67,.76,.85])cyl(upperBody,.24,.24,.03,[0,y,0],graphite);
+  rounded(upperBody,[1.29,1.16,.9],[0,.02,0],orange,.25);
+  rounded(upperBody,[1.15,.17,.79],[0,-.52,-.01],orangeDark,.07);
+  rounded(upperBody,[.87,.58,.055],[0,.15,.457],ivory,.10);
   const label=document.createElement('canvas');label.width=512;label.height=256;const lc=label.getContext('2d');lc.fillStyle='#fff3d9';lc.fillRect(0,0,512,256);lc.fillStyle='#354039';lc.font='bold 106px sans-serif';lc.textAlign='center';lc.textBaseline='middle';lc.fillText('22310',256,145);
   const texture=new THREE.CanvasTexture(label);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  mesh(character,new THREE.PlaneGeometry(.72,.36),new THREE.MeshStandardMaterial({map:texture,roughness:.65}),[0,.17,.491]);
-  for(const x of [-.49,.49])bolt(character,[x,.26,.429],.032);
-  for(let i=0;i<3;i++)rounded(character,[.12,.042,.03],[-.18+i*.18,-.28,.449],graphite,.018);
-  const battery=rounded(character,[.46,.65,.09],[0,.09,-.48],graphite,.08);
+  mesh(upperBody,new THREE.PlaneGeometry(.72,.36),new THREE.MeshStandardMaterial({map:texture,roughness:.65}),[0,.17,.491]);
+  for(const x of [-.49,.49])bolt(upperBody,[x,.26,.429],.032);
+  for(let i=0;i<3;i++)rounded(upperBody,[.12,.042,.03],[-.18+i*.18,-.28,.449],graphite,.018);
+  const battery=rounded(upperBody,[.46,.65,.09],[0,.09,-.48],graphite,.08);
   for(let i=0;i<4;i++)rounded(battery,[.28,.03,.015],[0,-.15+i*.09,-.054],rubber,.01);
   // Legs have separate pivot joints, shell panels and layered, rounded soles.
   for(const side of [-1,1]){
@@ -92,7 +93,7 @@ export function startMascot(isPaused) {
   // Each arm has independent shoulder, elbow and wrist pivots. The right arm lifts OUTWARD.
   const arms=[];
   for(const side of [-1,1]){
-    const shoulder=new THREE.Group();shoulder.position.set(side*.775,.41,0);character.add(shoulder);
+    const shoulder=new THREE.Group();shoulder.position.set(side*.775,.41,0);upperBody.add(shoulder);
     ball(shoulder,.195,[0,0,0],graphite);
     const pivot=cyl(shoulder,.135,.135,.06,[side*.15,0,0],chrome);pivot.rotation.z=Math.PI/2;
     rounded(shoulder,[.30,.38,.36],[0,-.265,0],orange,.115);
@@ -130,7 +131,7 @@ export function startMascot(isPaused) {
   const roverSmile=mesh(roverHead,new THREE.TorusGeometry(.054,.012,8,24,Math.PI),eyeMaterial,[0,-.065,.31]);roverSmile.rotation.z=Math.PI;
   cyl(roverHead,.014,.014,.15,[.17,.25,-.07],chrome);ball(roverHead,.044,[.17,.34,-.07],orange);
   const wheels=[];
-  for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
+  for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);wheel.userData.side=side;const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
   const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,-1.303,.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
   const stops=[[2.05,1.25],[2.2,-.9],[1.85,1.65],[-1.8,1.65],[-2.2,-1.0],[-2.05,1.4],[2.05,1.25]];
@@ -145,30 +146,45 @@ export function startMascot(isPaused) {
   const wave=()=>{waveStart=performance.now();};document.querySelector('#explode-toggle')?.addEventListener('click',wave);
   canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','w','W'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft')targetAngle-=.2;else if(e.key==='ArrowRight')targetAngle+=.2;else wave();}});
   const ease=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
+  // Scroll chapters are authored poses, blended across all of the articulated joints.
+  // [left shoulder, left elbow, right shoulder, right elbow, head pitch, head tilt, torso lean]
+  const poses=[[-.12,0,1.0,1.12,0,-.06,0],[-1.58,-1.80,.10,0,.04,-.12,-.025],[-.90,-.45,.90,.45,0,0,0],[-.15,0,.62,.65,.26,.06,.07],[-.72,-.35,.76,.40,0,-.04,0],[-.4,-.7,.2,.6,.13,.025,.025],[-.12,0,1.04,1.14,0,-.08,0]];
+  let poseChapter=0;
   renderer.setAnimationLoop(t=>{
     if(document.hidden||!visible||t-lastFrame<24)return;lastFrame=t;
     const sec=t/1000,paused=isPaused(),progress=Number(document.querySelector('.home-journey')?.dataset.progress||0),elapsed=(t-waveStart)/1000;
-    const autoWave=(!paused&&progress>.91)?Math.max(0,Math.sin(sec*.75))*.5:0;
-    const waveWeight=Math.max(autoWave,ease(elapsed/.45)*(1-ease((elapsed-1.9)/.55)));
+    const chapter=Number(document.querySelector('.home-journey')?.dataset.chapter||0);
+    poseChapter+=(chapter-poseChapter)*.10;
+    const index=Math.min(6,Math.floor(poseChapter)),mix=ease(poseChapter-index),next=Math.min(6,index+1);
+    const pose=poses[index].map((v,i)=>v+(poses[next][i]-v)*mix);
+    const greeting=(index===0||index===6)&&!paused;
+    const waveWeight=ease(elapsed/.45)*(1-ease((elapsed-1.9)/.55));
     const waveOscillation=Math.sin(Math.max(0,elapsed-.4)*12)*.2*waveWeight;
-    character.rotation.y+=(targetAngle+(paused?0:Math.sin(progress*Math.PI*3)*.48+Math.sin(sec*.43)*.065)-character.rotation.y)*.1;
+    const blend=(current,target)=>current+(target-current)*.12;
+    character.rotation.y=blend(character.rotation.y,targetAngle+(paused?0:Math.sin(poseChapter*.7)*.14));
     character.position.y=0;
     head.position.y=1.62+(paused?0:Math.sin(sec*1.2)*.01);
-    head.rotation.y+=(lookX*.18+(paused?0:Math.sin(progress*12)*.16)-head.rotation.y)*.08;
-    head.rotation.x+=(-lookY*.1-head.rotation.x)*.08;
-    head.rotation.z=paused?0:Math.sin(sec*.8)*.02-waveWeight*.07;
-    arms[1].shoulder.rotation.z=.10+waveWeight*1.05;
-    arms[1].elbow.rotation.z=waveWeight*1.12;
-    arms[1].wrist.rotation.z=waveWeight*.15+waveOscillation;
-    arms[0].shoulder.rotation.z=-.12+(paused?0:Math.sin(sec*1.2)*.025);
+    const lookAtRover=index===3||index===5;
+    head.rotation.y=blend(head.rotation.y,lookX*.18+(lookAtRover&&!paused?Math.max(-.30,Math.min(.30,lastRoverX*.14)):0));
+    head.rotation.x=blend(head.rotation.x,pose[4]+lookY*.1+(index===4&&!paused?Math.sin(sec*2)*.055:0));
+    head.rotation.z=blend(head.rotation.z,pose[5]+(paused?0:Math.sin(sec*.8)*.015));
+    upperBody.rotation.x=blend(upperBody.rotation.x,pose[6]);
+    upperBody.rotation.z=blend(upperBody.rotation.z,index===1?-.045:0);
+    arms[0].shoulder.rotation.z=blend(arms[0].shoulder.rotation.z,pose[0]);
+    arms[0].elbow.rotation.z=blend(arms[0].elbow.rotation.z,pose[1]);
+    arms[0].wrist.rotation.z=index===1?.22:0;
+    arms[1].shoulder.rotation.z=blend(arms[1].shoulder.rotation.z,pose[2]*(1-waveWeight)+1.15*waveWeight);
+    arms[1].elbow.rotation.z=blend(arms[1].elbow.rotation.z,pose[3]*(1-waveWeight)+1.12*waveWeight);
+    arms[1].wrist.rotation.z=waveOscillation+(greeting?Math.sin(sec*5)*.19:0);
     for(const eye of eyes)eye.scale.y=!paused&&sec%5.7<.11?.15:1;
-    const dt=Math.min(.05,Math.max(0,(t-lastTick)/1000));lastTick=t;if(!paused)aliveTime+=dt;
+    const dt=Math.min(.05,Math.max(0,(t-lastTick)/1000));lastTick=t;if(!paused)aliveTime+=dt*(index===3?.65:index===6?1.22:1);
     const segment=Math.floor(aliveTime/3.5)%6,phase=aliveTime%3.5;
     const from=stops[segment],to=stops[segment+1],drive=ease((phase-dwell[segment])/(3.5-dwell[segment]));
     // Each leg has clear space around the mascot; no path crosses its footprint.
     const rx=from[0]+(to[0]-from[0])*drive,rz=from[1]+(to[1]-from[1])*drive;
     const dx=rx-lastRoverX,dz=rz-lastRoverZ,speed=Math.hypot(dx,dz);
-    if(speed>.00001){const aim=Math.atan2(dx,dz),delta=Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle));roverAngle+=delta*.18;}
+    const aim=Math.atan2(to[0]-from[0],to[1]-from[1]),turn=paused?0:Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle))*.18;
+    roverAngle+=turn;
     rover.position.set(rx,-1.305,rz);rover.rotation.y=roverAngle;
     const glance=paused?0:Math.sin(aliveTime*1.2)*(speed<.001?.40:.12);
     const headTarget=Math.max(-.43,Math.min(.43,glance));
@@ -176,7 +192,7 @@ export function startMascot(isPaused) {
     roverHead.rotation.z=paused?0:Math.sin(aliveTime*2)*.035;
     chassis.rotation.z=paused?0:Math.sin(aliveTime*10)*Math.min(speed,.015);
     for(const e of roverEyes)e.scale.y=!paused&&aliveTime%4.8<.12?.15:1;
-    for(const wheel of wheels)wheel.rotation.x+=speed/.155;
+    for(const wheel of wheels)wheel.rotation.x+=(speed+wheel.userData.side*turn*.4)/(.155*1.14);
     roverShadow.position.set(rx,-1.303,rz);lastRoverX=rx;lastRoverZ=rz;
     renderer.render(scene,camera);
   });
