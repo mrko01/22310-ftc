@@ -115,7 +115,7 @@ export function startMascot(isPaused) {
   // Contact shadow anchors the character while preserving the site's light background.
   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=256;shadowCanvas.height=256;
   const sc=shadowCanvas.getContext('2d'),gradient=sc.createRadialGradient(128,128,10,128,128,128);gradient.addColorStop(0,'rgba(77,65,42,.2)');gradient.addColorStop(.45,'rgba(77,65,42,.09)');gradient.addColorStop(1,'rgba(77,65,42,0)');sc.fillStyle=gradient;sc.fillRect(0,0,256,256);
-  const ground=mesh(scene,new THREE.PlaneGeometry(4.6,3.3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),[0,-1.305,.1]);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
+  const ground=mesh(scene,new THREE.PlaneGeometry(5.8,4.3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),[0,-1.305,.1]);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
 
   // A compact companion follows a bounded route, pausing between short drives.
   const rover=new THREE.Group();scene.add(rover);
@@ -133,10 +133,11 @@ export function startMascot(isPaused) {
   for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
   const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,-1.303,.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
-  const stops=[.3,1.25,2.4,3.7,4.65,5.8,6.583185307];rover.scale.setScalar(1.14);
+  const stops=[[2.05,1.25],[2.2,-.9],[1.85,1.65],[-1.8,1.65],[-2.2,-1.0],[-2.05,1.4],[2.05,1.25]];
+  const dwell=[.45,1.2,.3,.85,.55,1.1];rover.scale.setScalar(1.14);
   let roverAngle=0,lastRoverX=1.18,lastRoverZ=.9,aliveTime=0,lastTick=0;
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
-  const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
+  const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));camera.lookAt(0,.62,0);camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
   new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;}).observe(canvas);
   canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);}});
   canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}});
@@ -163,13 +164,13 @@ export function startMascot(isPaused) {
     for(const eye of eyes)eye.scale.y=!paused&&sec%5.7<.11?.15:1;
     const dt=Math.min(.05,Math.max(0,(t-lastTick)/1000));lastTick=t;if(!paused)aliveTime+=dt;
     const segment=Math.floor(aliveTime/3.5)%6,phase=aliveTime%3.5;
-    const from=stops[segment],to=stops[segment+1],drive=ease((phase-.6)/2.6);
-    const orbit=from+(to-from)*drive+progress*.5;
-    const rx=Math.cos(orbit)*1.65,rz=Math.sin(orbit)*1.15;
+    const from=stops[segment],to=stops[segment+1],drive=ease((phase-dwell[segment])/(3.5-dwell[segment]));
+    // Each leg has clear space around the mascot; no path crosses its footprint.
+    const rx=from[0]+(to[0]-from[0])*drive,rz=from[1]+(to[1]-from[1])*drive;
     const dx=rx-lastRoverX,dz=rz-lastRoverZ,speed=Math.hypot(dx,dz);
     if(speed>.00001){const aim=Math.atan2(dx,dz),delta=Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle));roverAngle+=delta*.18;}
     rover.position.set(rx,-1.305,rz);rover.rotation.y=roverAngle;
-    const glance=paused?0:Math.sin(aliveTime*1.2)*.22;
+    const glance=paused?0:Math.sin(aliveTime*1.2)*(speed<.001?.40:.12);
     const headTarget=Math.max(-.43,Math.min(.43,glance));
     roverHead.rotation.y+=(headTarget-roverHead.rotation.y)*.09;
     roverHead.rotation.z=paused?0:Math.sin(aliveTime*2)*.035;
