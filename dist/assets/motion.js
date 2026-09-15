@@ -27,7 +27,19 @@ export function poseAt(chapter) {
 }
 export const roverStops = [[2.05,1.65],[2.2,-.9],[1.85,1.65],[-1.8,1.65],[-2.2,-1.0],[-2.05,1.6],[2.05,1.65]];
 
+// The obstacle lives entirely in the right-hand lane, clear of the mascot.
 export function rampHeight(x,z) {
-  if(z<1.025||z>2.275||Math.abs(x)>=1.2)return 0;
-  return .22*Math.min(1,(1.2-Math.abs(x))/.85);
+  if(Math.abs(x-2.12)>.61||Math.abs(z-.30)>=.75)return 0;
+  return .18*Math.min(1,(.75-Math.abs(z-.30))/.53);
+}
+export const roverDwell=[.8,1,.65,.8,3.9,.7];
+export const roverDurations=[3.5,3.5,4.1,3.5,6.7,4.1];
+export const smootherstep=t=>{t=Math.max(0,Math.min(1,t));return t*t*t*(t*(t*6-15)+10);};
+export function roverMotion(time) {
+  const total=roverDurations.reduce((sum,n)=>sum+n,0);
+  let phase=((time%total)+total)%total,segment=0;
+  while(phase>=roverDurations[segment]&&segment<5)phase-=roverDurations[segment++];
+  const from=roverStops[segment],to=roverStops[segment+1];
+  const drive=smootherstep((phase-roverDwell[segment])/(roverDurations[segment]-roverDwell[segment]));
+  return {segment,phase,drive,x:from[0]+(to[0]-from[0])*drive,z:from[1]+(to[1]-from[1])*drive,aim:Math.atan2(to[0]-from[0],to[1]-from[1])};
 }

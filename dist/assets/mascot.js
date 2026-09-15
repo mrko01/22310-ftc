@@ -1,4 +1,4 @@
-import {smoothDamp, poseAt, roverStops, rampHeight} from './motion.js';
+import {smoothDamp, poseAt, roverStops, rampHeight, roverMotion, roverDwell, smootherstep} from './motion.js';
 import * as THREE from './vendor/three.module.js';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
@@ -136,8 +136,8 @@ export function startMascot(isPaused) {
   const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,-1.303,.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
   const stops=roverStops;
-  const dwell=[.8,1.0,.65,.8,.9,.7];rover.scale.setScalar(1.14);
-  let roverAngle=0,lastRoverX=stops[0][0],lastRoverZ=stops[0][1],aliveTime=0,routeTime=0,lastTick=0,idleTime=0,waveClock=0,roverTempo=1;
+  const dwell=roverDwell;rover.scale.setScalar(1.14);
+  let roverAngle=0,lastRoverX=stops[0][0],lastRoverZ=stops[0][1],aliveTime=0,routeTime=0,lastTick=0,idleTime=0,waveClock=0,roverTempo=1,spinBase=0,previousSegment=-1,lastDriveSpeed=0;
   // The design board sits between the hands, with a schematic drawn for this mascot.
   const planCanvas=document.createElement('canvas');planCanvas.width=512;planCanvas.height=384;
   const pc=planCanvas.getContext('2d');pc.fillStyle='#fcf5df';pc.fillRect(0,0,512,384);
@@ -160,10 +160,13 @@ export function startMascot(isPaused) {
   rounded(cargo,[.045,.245,.24],[0,0,0],orange,.012);
   rounded(cargo,[.14,.055,.075],[0,.143,0],graphite,.018);
   // A low test ramp uses the same floor and height profile as the wheel contact solver.
-  const rampShape=new THREE.Shape();rampShape.moveTo(-1.2,0);rampShape.lineTo(-.35,.22);rampShape.lineTo(.35,.22);rampShape.lineTo(1.2,0);rampShape.closePath();
-  const ramp=mesh(scene,new THREE.ExtrudeGeometry(rampShape,{depth:1.25,bevelEnabled:false,steps:1}),ivory,[0,-1.305,1.025]);
-  rounded(scene,[.68,.006,1.21],[0,-1.305+.223,1.65],rubber,.002);
-  for(const z of [1.055,2.245])rounded(scene,[.68,.008,.035],[0,-1.305+.226,z],orange,.003);
+  const rampShape=new THREE.Shape();rampShape.moveTo(-.75,0);rampShape.lineTo(-.22,.18);rampShape.lineTo(.22,.18);rampShape.lineTo(.75,0);rampShape.closePath();
+  const ramp=new THREE.Group();ramp.position.set(2.12,-1.305,.30);ramp.rotation.y=-Math.PI/2;scene.add(ramp);
+  mesh(ramp,new THREE.ExtrudeGeometry(rampShape,{depth:1.22,bevelEnabled:false,steps:1}),ivory,[0,0,-.61]);
+  rounded(ramp,[.43,.006,1.17],[0,.183,0],rubber,.002);
+  for(const z of [-.59,.59])rounded(ramp,[.43,.008,.025],[0,.186,z],orange,.003);
+  // Reuse materials and the existing wheel geometry; no extra texture downloads.
+  const wheelContact=new THREE.Vector3(),wheelRotation=new THREE.Matrix4();
 
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
   const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));camera.lookAt(0,.62,0);camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
@@ -207,17 +210,18 @@ export function startMascot(isPaused) {
     arms[1].wrist.rotation.z=blend('rightWrist',arms[1].wrist.rotation.z,waveOscillation+(greeting?Math.sin(sec*5)*.19:0));
     for(const eye of eyes)eye.scale.y=!paused&&sec%5.7<.18?1-.84*Math.sin(Math.PI*(sec%5.7)/.18):1;
     roverTempo+=( (index===1?.65:index===4?1.22:1)-roverTempo)*(1-Math.exp(-3*dt));
-    const currentLeg=Math.floor(routeTime/3.5)%6,currentPhase=routeTime%3.5;
-    const departure=Math.atan2(stops[currentLeg+1][0]-stops[currentLeg][0],stops[currentLeg+1][1]-stops[currentLeg][1]);
-    const headingError=Math.abs(Math.atan2(Math.sin(departure-roverAngle),Math.cos(departure-roverAngle)));
-    const waitingToSteer=currentPhase>=dwell[currentLeg]&&currentPhase<dwell[currentLeg]+.08&&headingError>.14;
-    if(!paused){aliveTime+=dt; if(!waitingToSteer)routeTime+=dt*roverTempo;}
-    const segment=Math.floor(routeTime/3.5)%6,phase=routeTime%3.5;
-    const from=stops[segment],to=stops[segment+1],drive=ease((phase-dwell[segment])/(3.5-dwell[segment]));
-    // Each leg has clear space around the mascot; no path crosses its footprint.
-    const rx=from[0]+(to[0]-from[0])*drive,rz=from[1]+(to[1]-from[1])*drive;
+    const current=roverMotion(routeTime);
+    const headingError=Math.abs(Math.atan2(Math.sin(current.aim-roverAngle),Math.cos(current.aim-roverAngle)));
+    const waitingToSteer=current.phase>=dwell[current.segment]&&current.phase<dwell[current.segment]+.08&&headingError>.09;
+    if(!paused){aliveTime+=dt;if(!waitingToSteer)routeTime+=dt*roverTempo;}
+    const motion=roverMotion(routeTime),{segment,phase}=motion;
+    if(segment!==previousSegment){if(segment===4)spinBase=roverAngle;previousSegment=segment;}
+    const rx=motion.x,rz=motion.z;
     const dx=rx-lastRoverX,dz=rz-lastRoverZ,speed=Math.hypot(dx,dz);
-    const aim=Math.atan2(to[0]-from[0],to[1]-from[1]),turn=paused?0:Math.max(-2.8*dt,Math.min(2.8*dt,Math.atan2(Math.sin(aim-roverAngle),Math.cos(aim-roverAngle))*(1-Math.exp(-8*dt))));
+    // A controlled full turn in the open left lane: smooth start/stop, opposing wheels.
+    const spinning=segment===4&&phase<3.2;
+    const nextAngle=spinning?spinBase+Math.PI*2*smootherstep(phase/3.2):roverAngle+Math.max(-2.8*dt,Math.min(2.8*dt,Math.atan2(Math.sin(motion.aim-roverAngle),Math.cos(motion.aim-roverAngle))*(1-Math.exp(-8*dt))));
+    const turn=paused?0:nextAngle-roverAngle;
     roverAngle+=turn;
     const contacts=[];
     for(const side of [-1,1])for(const end of [-1,1]){const lx=side*.4*1.14,lz=end*.22*1.14;contacts.push({side,end,height:rampHeight(rx+lx*Math.cos(roverAngle)+lz*Math.sin(roverAngle),rz-lx*Math.sin(roverAngle)+lz*Math.cos(roverAngle))});}
@@ -229,10 +233,21 @@ export function startMascot(isPaused) {
     const headTarget=Math.max(-.43,Math.min(.43,glance));
     roverHead.rotation.y=blend('roverHead',roverHead.rotation.y,headTarget,1.2);
     roverHead.rotation.z=paused?0:Math.sin(aliveTime*2)*.035;
-    chassis.rotation.z=blend('chassisLean',chassis.rotation.z,paused?0:Math.sin(aliveTime*10)*Math.min(speed,.015));
+    const driveSpeed=dt?speed/dt:0,acceleration=dt?(driveSpeed-lastDriveSpeed)/dt:0;
+    chassis.rotation.x=blend('chassisPitch',chassis.rotation.x,Math.max(-.055,Math.min(.055,-acceleration*.014)),.35);
+    chassis.rotation.z=blend('chassisLean',chassis.rotation.z,Math.max(-.045,Math.min(.045,-turn/Math.max(dt,.001)*driveSpeed*.012)),.3);
+    lastDriveSpeed=driveSpeed;
+    roverHead.rotation.x=blend('roverHeadPitch',roverHead.rotation.x,spinning?-.065:Math.max(-.08,Math.min(.08,-acceleration*.012)),.5);
     for(const e of roverEyes)e.scale.y=!paused&&aliveTime%4.8<.16?1-.84*Math.sin(Math.PI*(aliveTime%4.8)/.16):1;
-    for(const wheel of wheels)wheel.rotation.x+=(speed+wheel.userData.side*turn*.4)/(.155*1.14);
-    roverShadow.position.set(rx,-1.303,rz);lastRoverX=rx;lastRoverZ=rz;
+    wheelRotation.makeRotationFromEuler(rover.rotation);
+    for(const wheel of wheels){
+      // Suspension compensates for crest transitions while each tire stays planted.
+      wheelContact.set(wheel.position.x*1.14,0,wheel.position.z*1.14).applyMatrix4(wheelRotation);
+      const groundAtWheel=rampHeight(rx+wheelContact.x,rz+wheelContact.z);
+      wheel.position.y=(groundAtWheel-avg(contacts)+.155*1.14-wheelContact.y)/(wheelRotation.elements[5]*1.14);
+      wheel.rotation.x+=(speed+wheel.userData.side*turn*.4*1.14)/(.155*1.14);
+    }
+    roverShadow.position.set(rx,-1.303+rampHeight(rx,rz),rz);lastRoverX=rx;lastRoverZ=rz;
     // Fade the board only after the hands settle, so it never floats between gestures.
     const handError=Math.abs(arms[0].elbow.rotation.z-2.3)+Math.abs(arms[1].elbow.rotation.z+2.3);
     const boardTarget=carry>.85&&handError<.5?1:0;

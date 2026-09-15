@@ -17,3 +17,5 @@ Each public page has a unique title/description, canonical, Open Graph and Twitt
 
 - Final scene props: original schematic board held between the mascot’s hands, rear-mounted parts box on the rover, and a low ramp. Wheel contact uses the same height function as the ramp geometry. Joint transitions use critically damped, speed-limited motion, with active clocks that stop when hidden and cache-versioned atomic bundles.
 - Validation: `npm test` checks fast section changes at 20/30/60/120 fps, transition overshoot, rover clearance, route continuity and ramp height. Public metadata, local assets and CSP hashes were also checked.
+
+- Rover tricks: low ramp in the right lane and a controlled full turn in the left lane. Quintic acceleration/deceleration, opposing wheel speeds during turns, and individual wheel-height compensation keep motion grounded. Both maneuvers clear the mascot footprint; the props reuse existing materials.
