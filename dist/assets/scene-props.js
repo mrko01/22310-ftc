@@ -45,8 +45,8 @@ export function createSceneProps(scene, camera, shadowTexture) {
     const shadow=new THREE.Mesh(shadowGeometry,shadowMaterial);shadow.rotation.x=-Math.PI/2;shadow.position.y=FLOOR_Y+.003;shadow.visible=false;scene.add(shadow);
     return {type,group,spin,shadow,flight:null,age:0};
   });
-  const next=propSequence();let untilNext=1.6,focus=null;
-  const planePoint=new THREE.Vector3();
+  const next=propSequence();let untilNext=0,focus=null;
+  const corner=new THREE.Vector3();
   return {
     update(dt,paused){
       if(paused)return focus;
@@ -54,9 +54,16 @@ export function createSceneProps(scene, camera, shadowTexture) {
       if(untilNext<=0){
         const cue=next(),item=items.find(item=>item.type===cue.type);
         // Same camera and world units as the robots; spawn beyond the frustum.
-        camera.getWorldDirection(planePoint);const distance=(PROP_LANE_Z-camera.position.z)/planePoint.z;
-        const halfWidth=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*distance*camera.aspect;
-        if(!item.flight){item.flight=createFlight(cue.type,halfWidth,cue.loft,cue.speed);item.age=0;item.group.visible=item.shadow.visible=true;}
+
+        let halfWidth=0,top=0;
+        camera.updateMatrixWorld();
+        // Intersect all viewport corners with the props' actual depth plane.
+        for(const x of [-1,1])for(const y of [-1,1]){
+          corner.set(x,y,.5).unproject(camera).sub(camera.position);
+          corner.multiplyScalar((PROP_LANE_Z-camera.position.z)/corner.z).add(camera.position);
+          halfWidth=Math.max(halfWidth,Math.abs(corner.x));top=Math.max(top,corner.y);
+        }
+        if(!item.flight){item.flight=createFlight(cue.type,halfWidth,cue.loft,cue.speed,cue.route,top);item.age=0;item.group.visible=item.shadow.visible=true;}
         untilNext=cue.delay;
       }
       focus=null;
