@@ -12,13 +12,13 @@ export function startMascot(isPaused) {
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=.93;
-  renderer.shadowMap.enabled=false;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
   const scene=new THREE.Scene();
   const environment=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);
   const environmentMap=pmrem.fromScene(environment,.03);scene.environment=environmentMap.texture;scene.environmentIntensity=.65;environment.dispose();pmrem.dispose();
   const camera=new THREE.PerspectiveCamera(31,1,.1,60);camera.position.set(0,1.25,10.6);camera.lookAt(0,.48,0);
   scene.add(new THREE.HemisphereLight(0xfff8ef,0xd4c7b4,1.0));
-  const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=false;key.shadow.mapSize.set(1024,1024);key.shadow.normalBias=.025;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=5;scene.add(key);
+  const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.normalBias=.008;key.shadow.bias=-.0001;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=3;scene.add(key);
   const fill=new THREE.DirectionalLight(0xe5efff,.85);fill.position.set(4,1,3);scene.add(fill);
   const rim=new THREE.DirectionalLight(0xffd1a0,2);rim.position.set(2,4,-4);scene.add(rim);
   const orange=new THREE.MeshPhysicalMaterial({color:0xf44a06,roughness:.32,metalness:.05,clearcoat:.55,clearcoatRoughness:.26});
@@ -121,6 +121,16 @@ export function startMascot(isPaused) {
   const sc=shadowCanvas.getContext('2d'),gradient=sc.createRadialGradient(128,128,10,128,128,128);gradient.addColorStop(0,'rgba(77,65,42,.2)');gradient.addColorStop(.45,'rgba(77,65,42,.09)');gradient.addColorStop(1,'rgba(77,65,42,0)');sc.fillStyle=gradient;sc.fillRect(0,0,256,256);
   const ground=mesh(scene,new THREE.PlaneGeometry(5.8,4.3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}),[0,FLOOR_Y,.1]);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
 
+  // Real silhouettes from the key light, received by the same floor as the tires.
+  const shadowFloor=mesh(scene,new THREE.PlaneGeometry(18,14),new THREE.ShadowMaterial({color:0x383329,opacity:.27}),[0,FLOOR_Y-.004,0]);
+  shadowFloor.rotation.x=-Math.PI/2;shadowFloor.castShadow=false;shadowFloor.receiveShadow=true;
+  // Small contact patches keep the soles grounded even under broad soft lighting.
+  const footShadows=new THREE.Group();scene.add(footShadows);
+  for(const side of [-1,1]){
+    const patch=mesh(footShadows,new THREE.PlaneGeometry(.95,1.35),ground.material.clone(),[side*.48,FLOOR_Y+.002,.15]);
+    patch.rotation.x=-Math.PI/2;patch.material.opacity=1.9;patch.castShadow=false;patch.receiveShadow=false;
+  }
+
   // A compact companion follows a bounded route, pausing between short drives.
   const rover=new THREE.Group();scene.add(rover);rover.rotation.order="YXZ";
   const chassis=rounded(rover,[.72,.22,.82],[0,.24,0],orange,.10);
@@ -135,7 +145,7 @@ export function startMascot(isPaused) {
   cyl(roverHead,.014,.014,.15,[.17,.25,-.07],chrome);ball(roverHead,.044,[.17,.34,-.07],orange);
   const wheels=[];
   for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);wheel.userData.side=side;const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
-  const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.3,1),ground.material,[1.05,(FLOOR_Y+.002),.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;
+  const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.5,1.35),ground.material.clone(),[1.05,(FLOOR_Y+.002),.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;roverShadow.receiveShadow=false;roverShadow.material.opacity=2.2;
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
   const stops=roverStops;
   const dwell=roverDwell;rover.scale.setScalar(1.14);
@@ -198,6 +208,7 @@ export function startMascot(isPaused) {
     const blend=(key,current,target,speed=3)=>{const result=smoothDamp(current,target,velocities.get(key)||0,dt,.34,speed);velocities.set(key,result.velocity);return result.value;};
     character.rotation.y=blend('character.rotation.y',character.rotation.y,targetAngle+(paused?0:Math.sin(chapter*.7)*.14));
     character.position.y=0;
+    footShadows.rotation.y=character.rotation.y;
     head.position.y=1.62+(paused?0:Math.sin(sec*1.2)*.01);
     const lookAtRover=index===1||index===3;
     head.rotation.y=blend('head.rotation.y',head.rotation.y,lookX*.18+(!paused&&propFocus?Math.max(-.32,Math.min(.32,propFocus.x*.15)):(lookAtRover&&!paused?Math.max(-.30,Math.min(.30,lastRoverX*.14)):0)));
@@ -251,6 +262,7 @@ export function startMascot(isPaused) {
       wheel.position.y=(groundAtWheel-avg(contacts)+.155*1.14-wheelContact.y)/(wheelRotation.elements[5]*1.14);
       wheel.rotation.x+=(speed+wheel.userData.side*turn*.4*1.14)/(.155*1.14);
     }
+    roverShadow.rotation.z=-roverAngle;
     roverShadow.position.set(rx,(FLOOR_Y+.002)+rampHeight(rx,rz),rz);lastRoverX=rx;lastRoverZ=rz;
     // Fade the board only after the hands settle, so it never floats between gestures.
     const handError=Math.abs(arms[0].elbow.rotation.z-2.3)+Math.abs(arms[1].elbow.rotation.z+2.3);
