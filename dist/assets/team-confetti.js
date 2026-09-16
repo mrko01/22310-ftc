@@ -18,7 +18,7 @@ export function createTeamConfetti(scene) {
   return {
     update(dt,chapter,paused){
       // A soft envelope tolerates fast section jumps without restarting particles.
-      const target=Math.max(0,Math.min(1,(chapter-1.55)/.28,(3.55-chapter)/.28));
+      const target=Math.max(0,Math.min(1,(chapter-1.55)/.28,(2.55-chapter)/.28));
       opacity+=(target-opacity)*(1-Math.exp(-dt*(target>opacity?2.8:4.2)));
       material.opacity=opacity*.85;pieces.visible=opacity>.002;
       if(!pieces.visible)return;
