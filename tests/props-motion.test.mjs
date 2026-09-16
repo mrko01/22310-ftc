@@ -45,10 +45,19 @@ test('sampling after a pause or skipped frame does not change trajectory or pene
   assert.equal(sampleFlight(flight,1.25).z,PROP_LANE_Z);
 });
 
-test('entry points start fully outside the viewport and top drops stay outside the central face area',()=>{
+test('entry points start fully outside the viewport',()=>{
  for(const route of [0,1,2,3])for(const width of [2,3,5,8]){
   const flight=createFlight(propTypes[0],width,1,1,route,4),p=sampleFlight(flight,0);
   assert.ok(Math.abs(p.x)-.23>width||p.y-.23>4);
-  if(route>=2)for(let t=0;t<3;t+=.02){const point=sampleFlight(flight,t);assert.ok(Math.abs(point.x)>=1.65);}
+ }
+});
+
+test('top throws cross to the opposite edge with enough momentum to exit within three seconds',()=>{
+ for(const type of propTypes)for(const route of [2,3])for(const width of [2,3,5,8])for(const top of [2,4,7]){
+  const flight=createFlight(type,width,1,.94,route,top);
+  assert.equal(Math.sign(flight.start),route===2?-1:1);
+  assert.equal(Math.sign(flight.end),route===2?1:-1);
+  assert.ok(sampleFlight(flight,3).done,'top throw lingers on screen');
+  const first=sampleFlight(flight,0);assert.ok(first.vx*flight.direction>=1.69);
  }
 });

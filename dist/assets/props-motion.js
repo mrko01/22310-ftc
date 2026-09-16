@@ -22,14 +22,14 @@ export function propSequence(random=Math.random) {
 // Solve each impact exactly, then sample the flight at any time. Independent of
 // rendering rate: dropped frames cannot tunnel through the floor or add energy.
 export function createFlight(type, halfWidth, loft=1, speed=1, route=0, top=4) {
-  // Two side throws and two outward top drops keep the central face area clear.
-  const direction=route===1||route===2?-1:1;
+  // Upper-left throws cross to the right; upper-right throws cross to the left.
+  const direction=route===1||route===3?-1:1;
   const fromTop=route>=2;
-  const start=fromTop?direction*Math.min(halfWidth-.35,Math.max(1.65,halfWidth*.6)):-direction*(halfWidth+.7);
+  const start=fromTop?-direction*Math.min(halfWidth-.35,Math.max(1.65,halfWidth*.6)):-direction*(halfWidth+.7);
   const end=direction*(halfWidth+.7);
-  const vx=direction*(fromTop?Math.max(.85,Math.abs(end-start)/2.3):Math.abs(end-start)/3.3)*speed;
+  const vx=direction*(fromTop?Math.max(1.8,Math.abs(end-start)/2.4):Math.abs(end-start)/3.3)*speed;
   if(fromTop)loft=top+.7-FLOOR_Y-type.radius;
-  const segments=[];let time=0,x=start,y=loft,vy=-.15,velocity=vx;
+  const segments=[];let time=0,x=start,y=loft,vy=fromTop?-2.4:-.15,velocity=vx;
   for(let bounce=0;bounce<12;bounce++){
     const duration=(vy+Math.sqrt(vy*vy+2*GRAVITY*y))/GRAVITY;
     segments.push({time,x,y,vy,vx:velocity,duration});
