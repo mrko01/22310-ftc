@@ -1,3 +1,4 @@
+import {createChapterProps} from './chapter-props.js';
 import {createTeamConfetti} from './team-confetti.js';
 import {createSceneProps} from './scene-props.js';
 import {FLOOR_Y} from './props-motion.js';
@@ -184,6 +185,7 @@ export function startMascot(isPaused) {
   // Reuse materials and the existing wheel geometry; no extra texture downloads.
   const sceneProps=createSceneProps(scene,camera,ground.material.map);
   const teamConfetti=createTeamConfetti(scene);
+  const chapterProps=createChapterProps(scene,ground.material.map);
   const wheelContact=new THREE.Vector3(),wheelRotation=new THREE.Matrix4();
 
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
@@ -204,6 +206,7 @@ export function startMascot(isPaused) {
     const sec=idleTime,elapsed=waveClock-waveStart;
     const chapter=Number(document.querySelector('.home-journey')?.dataset.chapter||0);
     teamConfetti.update(dt,chapter,paused);
+    chapterProps.update(dt,chapter,paused);
     const index=Math.min(4,Math.max(0,Math.round(chapter)));
     const carry=Math.max(0,1-Math.abs(chapter-1));
     const pose=poseAt(chapter);
@@ -293,5 +296,5 @@ export function startMascot(isPaused) {
     }
     renderer.render(scene,camera);
   });
-  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);sceneProps.dispose();teamConfetti.dispose();renderer.dispose();environmentMap.dispose();});
+  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);sceneProps.dispose();teamConfetti.dispose();chapterProps.dispose();renderer.dispose();environmentMap.dispose();});
 }
