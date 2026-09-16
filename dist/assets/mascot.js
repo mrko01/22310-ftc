@@ -1,3 +1,4 @@
+import {createTeamConfetti} from './team-confetti.js';
 import {createSceneProps} from './scene-props.js';
 import {FLOOR_Y} from './props-motion.js';
 import {smoothDamp, poseAt, roverStops, rampHeight, roverMotion, roverDwell, smootherstep} from './motion.js';
@@ -182,6 +183,7 @@ export function startMascot(isPaused) {
   for(const z of [-.59,.59])rounded(ramp,[.43,.008,.025],[0,.186,z],orange,.003);
   // Reuse materials and the existing wheel geometry; no extra texture downloads.
   const sceneProps=createSceneProps(scene,camera,ground.material.map);
+  const teamConfetti=createTeamConfetti(scene);
   const wheelContact=new THREE.Vector3(),wheelRotation=new THREE.Matrix4();
 
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
@@ -201,6 +203,7 @@ export function startMascot(isPaused) {
     const propFocus=sceneProps.update(dt,paused);
     const sec=idleTime,elapsed=waveClock-waveStart;
     const chapter=Number(document.querySelector('.home-journey')?.dataset.chapter||0);
+    teamConfetti.update(dt,chapter,paused);
     const index=Math.min(4,Math.max(0,Math.round(chapter)));
     const carry=Math.max(0,1-Math.abs(chapter-1));
     const pose=poseAt(chapter);
@@ -290,5 +293,5 @@ export function startMascot(isPaused) {
     }
     renderer.render(scene,camera);
   });
-  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);sceneProps.dispose();renderer.dispose();environmentMap.dispose();});
+  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);sceneProps.dispose();teamConfetti.dispose();renderer.dispose();environmentMap.dispose();});
 }
