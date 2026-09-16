@@ -145,7 +145,9 @@ export function startMascot(isPaused) {
   cyl(roverHead,.014,.014,.15,[.17,.25,-.07],chrome);ball(roverHead,.044,[.17,.34,-.07],orange);
   const wheels=[];
   for(const side of [-1,1])for(const z of [-.22,.22]){const wheel=new THREE.Group();wheel.position.set(side*.4,.155,z);rover.add(wheel);wheel.userData.side=side;const tire=cyl(wheel,.155,.155,.105,[0,0,0],rubber);tire.rotation.z=Math.PI/2;const hub=cyl(wheel,.091,.091,.12,[0,0,0],ivory);hub.rotation.z=Math.PI/2;const center=cyl(wheel,.035,.035,.126,[0,0,0],orange);center.rotation.z=Math.PI/2;wheels.push(wheel);}
-  const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.5,1.35),ground.material.clone(),[1.05,(FLOOR_Y+.002),.65]);roverShadow.rotation.x=-Math.PI/2;roverShadow.castShadow=false;roverShadow.receiveShadow=false;roverShadow.material.opacity=2.2;
+  const roverShadow=mesh(scene,new THREE.PlaneGeometry(1.5,1.35,20,20).rotateX(-Math.PI/2),ground.material.clone(),[1.05,(FLOOR_Y+.002),.65]);roverShadow.castShadow=false;roverShadow.receiveShadow=false;roverShadow.material.opacity=2.2;
+  const roverShadowPositions=roverShadow.geometry.attributes.position;
+  const roverShadowRest=roverShadowPositions.array.slice();
   // Irregular but deterministic destinations keep motion calm and avoid the mascot's feet.
   const stops=roverStops;
   const dwell=roverDwell;rover.scale.setScalar(1.14);
@@ -175,7 +177,8 @@ export function startMascot(isPaused) {
   const rampShape=new THREE.Shape();rampShape.moveTo(-.75,0);rampShape.lineTo(-.22,.18);rampShape.lineTo(.22,.18);rampShape.lineTo(.75,0);rampShape.closePath();
   const ramp=new THREE.Group();ramp.position.set(2.12,FLOOR_Y,.30);ramp.rotation.y=-Math.PI/2;scene.add(ramp);
   mesh(ramp,new THREE.ExtrudeGeometry(rampShape,{depth:1.22,bevelEnabled:false,steps:1}),ivory,[0,0,-.61]);
-  rounded(ramp,[.43,.006,1.17],[0,.183,0],rubber,.002);
+  const rampTread=rubber.clone();rampTread.color.setHex(0x657067);
+  rounded(ramp,[.43,.006,1.17],[0,.183,0],rampTread,.002);
   for(const z of [-.59,.59])rounded(ramp,[.43,.008,.025],[0,.186,z],orange,.003);
   // Reuse materials and the existing wheel geometry; no extra texture downloads.
   const sceneProps=createSceneProps(scene,camera,ground.material.map);
@@ -262,8 +265,17 @@ export function startMascot(isPaused) {
       wheel.position.y=(groundAtWheel-avg(contacts)+.155*1.14-wheelContact.y)/(wheelRotation.elements[5]*1.14);
       wheel.rotation.x+=(speed+wheel.userData.side*turn*.4*1.14)/(.155*1.14);
     }
-    roverShadow.rotation.z=-roverAngle;
-    roverShadow.position.set(rx,(FLOOR_Y+.002)+rampHeight(rx,rz),rz);lastRoverX=rx;lastRoverZ=rz;
+    // Drape the contact shadow over the incline and tread instead of placing a
+    // flat decal under the ramp surface. UVs remain fixed as the rover turns.
+    const shadowCos=Math.cos(roverAngle),shadowSin=Math.sin(roverAngle);
+    for(let i=0;i<roverShadowPositions.count;i++){
+      const x=roverShadowRest[i*3],z=roverShadowRest[i*3+2];
+      const sx=x*shadowCos+z*shadowSin,sz=-x*shadowSin+z*shadowCos;
+      const height=rampHeight(rx+sx,rz+sz);
+      roverShadowPositions.setXYZ(i,sx,height+(height>.179?.009:.003),sz);
+    }
+    roverShadowPositions.needsUpdate=true;
+    roverShadow.position.set(rx,FLOOR_Y,rz);lastRoverX=rx;lastRoverZ=rz;
     // Fade the board only after the hands settle, so it never floats between gestures.
     const handError=Math.abs(arms[0].elbow.rotation.z-2.3)+Math.abs(arms[1].elbow.rotation.z+2.3);
     const boardTarget=carry>.85&&handError<.5?1:0;
