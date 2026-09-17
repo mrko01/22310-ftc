@@ -58,3 +58,6 @@
 .calendar-view button[aria-pressed=true]{background:var(--saffron-gold);color:var(--ink);border-color:var(--saffron-orange)}
 ::selection{background:var(--saffron-gold);color:var(--ink)}
 @media(max-width:700px){.cinematic-home .site-header,.cinematic-home .site-nav{background:var(--paper)}.home-journey{background:#FFFCF5F2}}
+
+/* Numbered saffron mark: generous enough to read without adding chrome. */
+.brand-symbol,.cinematic-home .site-header .brand-symbol,.home-journey .footer-main .brand-symbol{width:52px;height:52px}

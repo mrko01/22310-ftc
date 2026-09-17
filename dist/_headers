@@ -3,6 +3,6 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-osqenDrkM5in3oyc+sNztrfKurTEPMjeAs/YdmGQMxU=' 'sha256-wLaroLoaDlNpuFnCIOyCy3H1HdHWCcEApJD+GVTON3U=' 'sha256-vcMZOoaqox8dXYWmtwhkSE99eX+Ev9M04W8lizGLHVM=' 'sha256-6uvhpLKt89/ud2T3gUei5ysM+bIZ8GcmTREQDcyhcis='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-DYDfKtCTNZDfGBEIHRKWtsIWngUE+w9NUQipp1fQPyI=' 'sha256-OKw5QuWX2HrOjhWCEFbfCnCRVI0uuk+JciLBCu3cCwk=' 'sha256-jHUBiA+H6d9KDDjGdPEVLBDPBCG8stQ+wsD0JujseFE=' 'sha256-nkd2/L8z/iiEW9MDwALN14uJttVLn0MYEhQIXVAuysU='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
 /assets/*
   Cache-Control: public, max-age=3600
