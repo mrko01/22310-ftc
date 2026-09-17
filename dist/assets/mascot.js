@@ -23,8 +23,8 @@ export function startMascot(isPaused) {
   const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.normalBias=.008;key.shadow.bias=-.0001;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=3;scene.add(key);
   const fill=new THREE.DirectionalLight(0xe5efff,.85);fill.position.set(4,1,3);scene.add(fill);
   const rim=new THREE.DirectionalLight(0xffd1a0,2);rim.position.set(2,4,-4);scene.add(rim);
-  const orange=new THREE.MeshPhysicalMaterial({color:0xf44a06,roughness:.32,metalness:.05,clearcoat:.55,clearcoatRoughness:.26});
-  const orangeDark=new THREE.MeshStandardMaterial({color:0xcc430c,roughness:.42,metalness:.15});
+  const orange=new THREE.MeshPhysicalMaterial({color:0xE07A2F,roughness:.32,metalness:.05,clearcoat:.55,clearcoatRoughness:.26});
+  const orangeDark=new THREE.MeshStandardMaterial({color:0xE6472C,roughness:.42,metalness:.15});
   const graphite=new THREE.MeshPhysicalMaterial({color:0x293230,roughness:.28,metalness:.55,clearcoat:.4});
   const rubber=new THREE.MeshStandardMaterial({color:0x343b37,roughness:.85});
   const ivory=new THREE.MeshPhysicalMaterial({color:0xfff3d9,roughness:.38,metalness:.05,clearcoat:.25});

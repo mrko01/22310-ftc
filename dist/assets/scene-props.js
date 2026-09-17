@@ -3,7 +3,7 @@ import {FLOOR_Y,PROP_LANE_Z,propTypes,propSequence,createFlight,sampleFlight} fr
 
 export function createSceneProps(scene, camera, shadowTexture) {
   const material=(color,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness:metalness?.28:.43,metalness});
-  const green=material(0x7eae42),purple=material(0x7851b7),orange=material(0xfa721f),ivory=material(0xffefcc),rubber=material(0x303d39),steel=material(0xa9b7ad,.75);
+  const green=material(0x7eae42),purple=material(0x7851b7),orange=material(0xE07A2F),ivory=material(0xffefcc),rubber=material(0x303d39),steel=material(0xa9b7ad,.75);
   // A small procedural texture gives the DECODE-inspired balls recessed dimples
   // without loading a model or building dozens of separate hole meshes.
   const texCanvas=document.createElement('canvas');texCanvas.width=512;texCanvas.height=256;

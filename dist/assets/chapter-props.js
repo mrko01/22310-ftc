@@ -14,25 +14,25 @@ export function createChapterProps(scene,shadowTexture){
   box(calendar,calendar.group,[.64,.09,.5],[0,.045,0],0x657067);
   box(calendar,calendar.group,[.09,.66,.09],[0,.4,0],0x87968b);
   box(calendar,calendar.group,[1.02,1.13,.09],[0,1.15,0],0xfff2d9,.065);
-  box(calendar,calendar.group,[1.02,.24,.10],[0,1.58,.008],0xf47b32);
+  box(calendar,calendar.group,[1.02,.24,.10],[0,1.58,.008],0xE07A2F);
   for(const x of [-.30,.30])box(calendar,calendar.group,[.055,.19,.08],[x,1.7,.01],0x66766b,.025);
-  for(let row=0;row<3;row++)for(let col=0;col<4;col++)box(calendar,calendar.group,[.115,.10,.015],[-.32+col*.21,1.30-row*.21,.055],row===1&&col===2?0xf47b32:0xb8c2b2,.025);
-  const marker=box(calendar,calendar.group,[.17,.15,.012],[.10,1.09,.065],0xf5bc53,.025);
+  for(let row=0;row<3;row++)for(let col=0;col<4;col++)box(calendar,calendar.group,[.115,.10,.015],[-.32+col*.21,1.30-row*.21,.055],row===1&&col===2?0xE07A2F:0xb8c2b2,.025);
+  const marker=box(calendar,calendar.group,[.17,.15,.012],[.10,1.09,.065],0xF6C344,.025);
   const mail=makeGroup(4);
   box(mail,mail.group,[.60,.09,.50],[0,.045,0],0x657067);
   box(mail,mail.group,[.12,1.10,.12],[0,.60,0],0x87968b);
-  box(mail,mail.group,[.83,.63,.67],[0,1.37,0],0xf47b32,.15);
+  box(mail,mail.group,[.83,.63,.67],[0,1.37,0],0xE07A2F,.15);
   box(mail,mail.group,[.67,.46,.024],[0,1.34,.346],0x34433d,.075);
   const door=new THREE.Group();door.position.set(0,1.11,.37);mail.group.add(door);
-  box(mail,door,[.73,.52,.045],[0,.26,0],0xf9a05b,.08);
+  box(mail,door,[.73,.52,.045],[0,.26,0],0xE07A2F,.08);
   box(mail,door,[.18,.035,.04],[0,.42,.035],0xfff1d7,.01);
   const flag=new THREE.Group();flag.position.set(.45,1.30,0);mail.group.add(flag);
   box(mail,flag,[.045,.45,.035],[0,.20,0],0x647466,.01);
-  box(mail,flag,[.19,.15,.04],[.075,.36,0],0xf5c55a,.018);
+  box(mail,flag,[.19,.15,.04],[.075,.36,0],0xF6C344,.018);
   const envelope=new THREE.Group();mail.group.add(envelope);
   box(mail,envelope,[.45,.29,.025],[0,0,0],0xfff4dc,.018);
   for(const sign of [-1,1]){const crease=box(mail,envelope,[.25,.013,.005],[sign*.10,.033,.016],0xc6a987,.003);crease.rotation.z=sign*.55;}
-  box(mail,envelope,[.065,.055,.008],[.145,.077,.018],0xef8850,.006);
+  box(mail,envelope,[.065,.055,.008],[.145,.077,.018],0xE6472C,.006);
   let time=0;
   return {
     update(dt,chapter,paused){

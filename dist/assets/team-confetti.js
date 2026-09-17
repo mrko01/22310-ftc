@@ -9,7 +9,7 @@ export function createTeamConfetti(scene) {
   const pieces=new THREE.InstancedMesh(geometry,material,count);
   pieces.instanceMatrix.setUsage(THREE.DynamicDrawUsage);pieces.visible=false;pieces.frustumCulled=false;
   scene.add(pieces);
-  const colors=[0xf47b32,0xf5c55a,0xffe4b8,0x93a888,0xbc9acd];
+  const colors=[0xE07A2F,0xF6C344,0xE6472C,0xF6C344,0xE07A2F];
   const particles=Array.from({length:count},(_,i)=>{
     pieces.setColorAt(i,new THREE.Color(colors[i%colors.length]));
     return {x:(random()-.5)*5.5,z:-1.2-random()*.7,phase:random(),speed:.11+random()*.055,sway:.10+random()*.16,spin:random()*6.28,size:.65+random()*.65};
