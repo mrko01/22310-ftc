@@ -3,6 +3,6 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-PVYZ3kz8jL5Tj6tViJ4ksBCx30QxYcGYF8dZyKtzbcI=' 'sha256-I+B+IS/FGtH61iRoSo3JphUWCVamtb4h6RVQXM6DWTo=' 'sha256-o1xxkKHtzlilo1SZp7qqqMmhkRABGQIJw6bBuGI1Yrc=' 'sha256-d72EOhmWdMqSFVeL52rBsnHmkfl6WRD3ORbzwBHecjo=' 'sha256-aUTFCRDWUizdLKA3f1hjt5IxBiMlVLtIEa8N+0/xx4o='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-3h7N3Agc9TqRF05M4m3e1NuWeE1Lk8KA5k42CH2ja7E=' 'sha256-1njj+Kpx2mCE1sUd+zRbUVq/huluPTfbFrIulhOAMBQ=' 'sha256-cxOg3suhhyoX/E2ADm2LP5vm0UJXrYd4PXIp+DjUPYk=' 'sha256-p8yWWTANwrjOiQ2E9JWdTylWSToXmp3ZwRydhbP/EBU=' 'sha256-jRzK92pIklAz5O5J7hRHoG15XVU6pCJ25dJDTUJlcso='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
 /assets/*
   Cache-Control: public, max-age=3600
