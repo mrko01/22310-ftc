@@ -10,7 +10,7 @@ import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 export function startMascot(isPaused) {
   const canvas=document.querySelector('#robot');
   const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=.93;
@@ -23,9 +23,9 @@ export function startMascot(isPaused) {
   const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.normalBias=.008;key.shadow.bias=-.0001;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=3;scene.add(key);
   const fill=new THREE.DirectionalLight(0xe5efff,.85);fill.position.set(4,1,3);scene.add(fill);
   const rim=new THREE.DirectionalLight(0xffd1a0,2);rim.position.set(2,4,-4);scene.add(rim);
-  const orange=new THREE.MeshPhysicalMaterial({color:0xE07A2F,roughness:.32,metalness:.05,clearcoat:.55,clearcoatRoughness:.26});
-  const orangeDark=new THREE.MeshStandardMaterial({color:0xE6472C,roughness:.42,metalness:.15});
-  const graphite=new THREE.MeshPhysicalMaterial({color:0x293230,roughness:.28,metalness:.55,clearcoat:.4});
+  const orange=new THREE.MeshPhysicalMaterial({color:0xed922c,roughness:.32,metalness:.05,clearcoat:.55,clearcoatRoughness:.26});
+  const orangeDark=new THREE.MeshStandardMaterial({color:0xc56b27,roughness:.42,metalness:.15});
+  const graphite=new THREE.MeshPhysicalMaterial({color:0x382d36,roughness:.28,metalness:.55,clearcoat:.4});
   const rubber=new THREE.MeshStandardMaterial({color:0x343b37,roughness:.85});
   const ivory=new THREE.MeshPhysicalMaterial({color:0xfff3d9,roughness:.38,metalness:.05,clearcoat:.25});
   const glass=new THREE.MeshPhysicalMaterial({color:0x071c1c,roughness:.17,metalness:.24,clearcoat:1,clearcoatRoughness:.11});
@@ -296,5 +296,5 @@ export function startMascot(isPaused) {
     }
     renderer.render(scene,camera);
   });
-  resize();window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);sceneProps.dispose();teamConfetti.dispose();chapterProps.dispose();renderer.dispose();environmentMap.dispose();});
+  resize();window.addEventListener('pagehide',event=>{if(event.persisted)return;renderer.setAnimationLoop(null);sceneProps.dispose();teamConfetti.dispose();chapterProps.dispose();renderer.dispose();environmentMap.dispose();});
 }
