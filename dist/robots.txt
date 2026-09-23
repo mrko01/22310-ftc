@@ -1,3 +1,5 @@
+# EDIT Saffron's public website is intentionally crawlable, including by AI search and assistant crawlers.
 User-agent: *
 Allow: /
+
 Sitemap: https://22310.ca/sitemap.xml

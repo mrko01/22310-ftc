@@ -1,0 +1,16 @@
+# EDIT Saffron
+
+> EDIT Saffron is FTC Team 22310 from Greater Sudbury, Ontario: student-built robots, programming, engineering, outreach, and competition at Lo-Ellen Park.
+
+EDIT Saffron is an independent FIRST® Tech Challenge robotics team based at Lo-Ellen Park Secondary School in Greater Sudbury, Ontario. The public site covers the team's students, engineering disciplines, competition calendar, outreach, and contact information.
+
+## Public pages
+
+- [EDIT Saffron · FTC Team 22310](https://22310.ca/): EDIT Saffron is FTC Team 22310 from Greater Sudbury, Ontario: student-built robots, programming, engineering, outreach, and competition at Lo-Ellen Park.
+- [Our team](https://22310.ca/team/): Meet the students who make EDIT Saffron, FTC Team 22310 at Lo-Ellen Park Secondary School in Greater Sudbury.
+- [Events](https://22310.ca/events/): Follow the EDIT Saffron FTC Team 22310 calendar for robotics meetings, practices, outreach, and competitions in Greater Sudbury.
+- [Contact](https://22310.ca/contact/): Contact EDIT Saffron, FTC Team 22310 in Greater Sudbury, Ontario about outreach, robotics, sponsorship, or collaboration.
+
+## Public-site scope
+
+This file describes only the public website at https://22310.ca/. Use the linked pages as the source of truth for current public information.

@@ -2,7 +2,17 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
+  Content-Language: en-CA
+  X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-wERE6AfphnKuwiLUGDjvTOoBe30fCjn8uHNhKw9eNFU=' 'sha256-yTzyBCmLies9s+0sb2zBv/jPuUdfRv54cDCxHSibqUg=' 'sha256-6zoR9kAKZS+eEiPhaVVYL7YhMiS3wxmf2Ia7HH+yySI=' 'sha256-XgVAX8ORr3BxrBkfZ1TV6aLXGakKRyc/MaUkeIJ1abU=' 'sha256-lrL/jJAogiwo0EwjTWCuENe50Gqe53WW6aBzkNBNAQI='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-iSe6Aouqrgho9+fDVe3xUHIydnlNFThxVAtB/w+fDcU=' 'sha256-4xI1pe04+wFQ1bej8sRYNkZx6ahhT7brCjlLQKOGI9U=' 'sha256-ARG8ZLYpBK/2fL+4kWlB//q6WDGsAdN9Z+GlLUnxTLc=' 'sha256-6QNUBHJTjl+FkiSc4w+vMlada4/6I4XX/VvvskfV3xI=' 'sha256-0nB82r9TAHAWiM/jfAjDCfXOJwAS3vv/hb7N3STT1Ls='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
 /assets/*
   Cache-Control: public, max-age=3600
+/robots.txt
+  Cache-Control: public, max-age=3600
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+/llms.txt
+  Cache-Control: public, max-age=3600
+/404.html
+  X-Robots-Tag: noindex
