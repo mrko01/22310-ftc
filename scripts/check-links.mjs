@@ -9,6 +9,7 @@ for(const [route,file] of files){
   if((html.match(/<h1[\s>]/g)||[]).length!==1)errors.push(route+': expected one H1');
   JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1]||'null');
   for(const [,raw]of html.matchAll(/(?:href|src)="([^"]+)"/g)){
+    if(raw.startsWith('mailto:')&&!html.includes('<!--email_off--><a'))errors.push(route+': direct email fallback is missing Cloudflare protection');
     if(/^(https?:|mailto:|data:)/.test(raw))continue;
     const url=new URL(raw.replaceAll('&amp;','&'),'https://22310.ca'+route);
     const target=url.pathname.endsWith('/')?'dist'+url.pathname+'index.html':'dist'+url.pathname;
