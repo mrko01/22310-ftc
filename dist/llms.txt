@@ -1,15 +1,17 @@
 # EDIT Saffron
 
-> EDIT Saffron is FTC Team 22310 from Greater Sudbury, Ontario: student-built robots, programming, engineering, outreach, and competition at Lo-Ellen Park.
+> Meet EDIT Saffron, FTC Team 22310 at Lo-Ellen Park in Greater Sudbury. Student-built robots, hands-on engineering, and a community helping us go further.
 
 EDIT Saffron is an independent FIRST® Tech Challenge robotics team based at Lo-Ellen Park Secondary School in Greater Sudbury, Ontario. The public site covers the team's students, engineering disciplines, competition calendar, outreach, and contact information.
 
 ## Public pages
 
-- [EDIT Saffron · FTC Team 22310](https://22310.ca/): EDIT Saffron is FTC Team 22310 from Greater Sudbury, Ontario: student-built robots, programming, engineering, outreach, and competition at Lo-Ellen Park.
-- [Our team](https://22310.ca/team/): Meet the students who make EDIT Saffron, FTC Team 22310 at Lo-Ellen Park Secondary School in Greater Sudbury.
-- [Events](https://22310.ca/events/): Follow the EDIT Saffron FTC Team 22310 calendar for robotics meetings, practices, outreach, and competitions in Greater Sudbury.
-- [Contact](https://22310.ca/contact/): Contact EDIT Saffron, FTC Team 22310 in Greater Sudbury, Ontario about outreach, robotics, sponsorship, or collaboration.
+- [EDIT Saffron · FTC Team 22310](https://22310.ca/): Meet EDIT Saffron, FTC Team 22310 at Lo-Ellen Park in Greater Sudbury. Student-built robots, hands-on engineering, and a community helping us go further.
+- [Our team](https://22310.ca/team/): Meet the students behind EDIT Saffron, FTC Team 22310 at Lo-Ellen Park Secondary School in Greater Sudbury. Design, Automation, Reach, Trades, and Strategy.
+- [Sponsor the team](https://22310.ca/sponsors/): Support student robotics in Greater Sudbury. Explore sponsorship, materials, services, and mentorship opportunities with EDIT Saffron, FTC Team 22310.
+- [Events](https://22310.ca/events/): Explore the EDIT Saffron public calendar. Search robotics meetings, practices, outreach and competitions, and save dates to your calendar.
+- [Contact](https://22310.ca/contact/): Get in touch with EDIT Saffron in Greater Sudbury. Talk sponsorship, mentorship, outreach, getting involved, or a visit with FTC Team 22310.
+- [Partnership brief](https://22310.ca/sponsors/brief/): A printable overview of EDIT Saffron, FTC Team 22310, and ways to support student robotics in Greater Sudbury.
 
 ## Public-site scope
 
