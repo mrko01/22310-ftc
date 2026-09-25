@@ -1,4 +1,7 @@
-import {escapeHTML as escape,dateKey,formatDate,timeLabel,eventsOnDay,ics,normalizeEvents,filterEvents,eventRange,googleCalendarUrl,calendarICS,isUpcoming} from './calendar.mjs';
+import {escapeHTML as escape,dateKey,formatDate,timeLabel,eventsOnDay,ics,normalizeEvents,filterEvents,eventRange,googleCalendarUrl,calendarICS,isUpcoming,eventLink,eventContactLink,eventEnquiryContext} from './calendar.mjs';
+import {contactTopics,supportIntroductions,draftKey,draftFrom,readDrafts,mergeDrafts,contactContextKey,mailtoMessage} from './contact.mjs';
+import {fetchJSONTimed} from './network.mjs';
+document.documentElement.classList.remove('no-js');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let paused=reduced.matches;
 const header=document.querySelector('.site-header'),menu=document.querySelector('.menu-button'),nav=document.querySelector('.site-nav');
@@ -21,17 +24,21 @@ toggle?.addEventListener('click',()=>{paused=!paused;syncMotion();});
 reduced.addEventListener('change',()=>{paused=reduced.matches;syncMotion();if(reduced.matches)document.documentElement.classList.remove('motion-ready');});syncMotion();
 document.querySelector('[data-print]')?.addEventListener('click',()=>window.print());
 const API=document.querySelector('meta[name="saffron-api"]')?.content||'https://team.22310.ca';
-async function fetchTimed(url,options={}){const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);try{return await fetch(url,{...options,signal:controller.signal});}finally{clearTimeout(timeout);}}
 function downloadCalendar(contents,name){const url=URL.createObjectURL(new Blob([contents],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const calendar=document.querySelector('[data-events]');
 if(calendar){
-  let events=[],ready=false,busy=false,queued=false,view='agenda',selectedId=null,lastFetched=0,stale=false;
+  let events=[],ready=false,busy=false,queued=false,view='agenda',selectedId=null,lastFetched=0,stale=false,syncingHistory=false;
   const todayParts=()=>dateKey(Date.now()).split('-').map(Number);
   const currentMonth=()=>{const [year,month]=todayParts();return new Date(year,month-1,1,12);};
   let month=currentMonth();
   const isPreview=calendar.dataset.events==='preview',filter=document.querySelector('#event-category'),search=document.querySelector('#event-search'),status=document.querySelector('#calendar-status'),dialog=document.querySelector('#event-dialog'),count=document.querySelector('#event-count'),exportButton=document.querySelector('#export-events'),cacheKey='saffron-public-calendar-v2';
   const selected=()=>filterEvents(events,filter?.value||'all',search?.value||'');
-  function openEvent(id){const event=events.find(e=>e.id===id);if(!event)return;selectedId=id;document.querySelector('#event-detail-title').textContent=event.title;document.querySelector('#event-detail-category').textContent=event.category;document.querySelector('#event-detail-time').textContent=eventRange(event);document.querySelector('#event-detail-location').textContent=event.location||'Location to be confirmed';document.querySelector('#event-detail-google').href=googleCalendarUrl(event);if(!dialog.open)dialog.showModal();}
+  const linkedEvent=()=>new URLSearchParams(location.search).get('event');
+  function openEvent(id,updateURL=true){const event=events.find(e=>e.id===id);if(!event)return;selectedId=id;document.querySelector('#event-detail-title').textContent=event.title;document.querySelector('#event-detail-category').textContent=event.category;document.querySelector('#event-detail-time').textContent=eventRange(event);document.querySelector('#event-detail-location').textContent=event.location||'Location to be confirmed';document.querySelector('#event-detail-google').href=googleCalendarUrl(event);document.querySelector('#event-detail-contact').href=eventContactLink(event.id);document.querySelector('#event-share-url').value=eventLink(event.id);document.querySelector('#event-freshness').textContent=stale?'This is a saved schedule. Confirm details with the team before making plans.':'';if(!dialog.open){document.querySelector('#event-share-status').textContent='';document.querySelector('#event-link-field').hidden=true;dialog.showModal();}if(updateURL&&linkedEvent()!==id){const url=new URL(location.href);url.searchParams.set('event',id);history.pushState({...history.state,saffronEvent:true},'',url);}}
+  function syncLinkedEvent(){const id=linkedEvent();if(id&&events.some(e=>e.id===id))openEvent(id,false);else if(id&&ready){if(dialog.open){syncingHistory=true;dialog.close();}if(status){const notice=document.createElement('p');notice.className='event-link-notice';notice.textContent='This linked event is no longer on the public schedule. Contact the team to confirm it, or browse the dates below.';status.replaceChildren(notice);}}else if(dialog.open){syncingHistory=true;dialog.close();}}
+  window.addEventListener('popstate',syncLinkedEvent);
+  dialog?.addEventListener('close',()=>{if(syncingHistory){syncingHistory=false;return;}if(!linkedEvent())return;if(history.state?.saffronEvent)history.back();else{const url=new URL(location.href);url.searchParams.delete('event');history.replaceState(history.state,'',url);}});
+  document.querySelector('#event-detail-share')?.addEventListener('click',async()=>{const field=document.querySelector('#event-share-url'),shareStatus=document.querySelector('#event-share-status');try{await navigator.clipboard.writeText(field.value);shareStatus.textContent='Event link copied.';}catch{document.querySelector('#event-link-field').hidden=false;field.focus();field.select();shareStatus.textContent='Copy the selected link to share this event.';}});
   dialog?.querySelector('.dialog-close').addEventListener('click',()=>dialog.close());
   dialog?.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
   document.querySelector('#event-detail-save')?.addEventListener('click',()=>{const event=events.find(e=>e.id===selectedId);if(event)downloadCalendar(ics(event),'saffron-event.ics');});
@@ -62,12 +69,12 @@ if(calendar){
     }
     calendar.querySelectorAll('[data-event]').forEach(button=>button.addEventListener('click',()=>openEvent(button.dataset.event)));
     if(focusedId)Array.from(calendar.querySelectorAll('[data-event]')).find(button=>button.dataset.event===focusedId&&button.className===focusedClass)?.focus({preventScroll:true});
-    if(dialog?.open){if(events.some(e=>e.id===selectedId))openEvent(selectedId);else dialog.close();}
+    if(dialog?.open){if(events.some(e=>e.id===selectedId))openEvent(selectedId,false);else {syncingHistory=true;dialog.close();}}
   }
   async function load(){
     if(busy){queued=true;return;}busy=true;calendar.setAttribute('aria-busy','true');
-    try{const response=await fetchTimed(API+'/api/public/calendar');if(!response.ok)throw new Error();events=normalizeEvents(await response.json());ready=true;stale=false;lastFetched=Date.now();try{localStorage.setItem(cacheKey,JSON.stringify({events,fetched:lastFetched}));}catch{}render();renderStatus();}
-    catch{stale=true;if(ready){render();renderStatus();}else{if(status)status.textContent='You can try again or contact the team for the latest dates.';calendar.innerHTML='<div class="event-empty"><h3>The schedule is taking a break.</h3><p>We couldn’t reach the live calendar. Your next step is still here.</p><button class="text-link" id="retry-calendar">Try again ↗</button><a class="text-link" href="/contact/?topic=visit">Ask about a date ↗</a></div>';calendar.querySelector('#retry-calendar').addEventListener('click',load);}}
+    try{const {response,result}=await fetchJSONTimed(API+'/api/public/calendar');if(!response.ok)throw new Error();events=normalizeEvents(result);ready=true;stale=false;lastFetched=Date.now();try{localStorage.setItem(cacheKey,JSON.stringify({events,fetched:lastFetched}));}catch{}render();renderStatus();syncLinkedEvent();}
+    catch{stale=true;if(ready){render();renderStatus();syncLinkedEvent();}else{if(status)status.textContent='You can try again or contact the team for the latest dates.';calendar.innerHTML='<div class="event-empty"><h3>The schedule is taking a break.</h3><p>We couldn’t reach the live calendar. Your next step is still here.</p><button class="text-link" id="retry-calendar">Try again ↗</button><a class="text-link" href="/contact/?topic=visit">Ask about a date ↗</a></div>';calendar.querySelector('#retry-calendar').addEventListener('click',load);}}
     finally{busy=false;calendar.setAttribute('aria-busy','false');if(queued){queued=false;void load();}}
   }
   try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(saved&&Number.isFinite(saved.fetched)&&Date.now()-saved.fetched>=0&&Date.now()-saved.fetched<86400000){events=normalizeEvents(saved.events);lastFetched=saved.fetched;ready=true;stale=true;render();renderStatus();}}catch{}
@@ -96,30 +103,50 @@ if(calendar){
 }
 const form=document.querySelector('#contact-form');
 if(form){
-  let sending=false;
+  let sending=false,eventContext=null,eventId='',dirty=false,storageAvailable=true,pendingDraft=null;
   const message=document.querySelector('#contact-message'),button=form.querySelector('button[type=submit]'),buttonLabel=button.innerHTML,subject=form.elements.subject,body=form.elements.message,help=document.querySelector('#topic-help'),counter=document.querySelector('#message-count'),emailLink=document.querySelector('#email-fallback');
-  const topics={sponsorship:['Partnership or sponsorship','Tell us about your organization, what you have in mind, and the best way to connect.'],outreach:['Outreach or collaboration','Share your audience, location, and any dates you have in mind.'],joining:['Getting involved','Tell us what interests you and how you’d like to get involved.'],visit:['Visiting or attending an event','Include the event or date you’re interested in so we can confirm the details.']};
-  const support={funding:'I’d like to discuss supporting the team’s season. ',materials:'I’d like to offer parts, materials, or services to the team. ',mentorship:'I’d like to share my expertise with the team. '};
-  function syncForm(){counter.textContent=body.value.length.toLocaleString('en-CA')+' / 5,000';emailLink.href='mailto:team@22310.ca?'+new URLSearchParams({subject:subject.value||'Hello, EDIT Saffron',body:(form.elements.name.value?'From: '+form.elements.name.value+'\n\n':'')+body.value});help.textContent=Object.values(topics).find(t=>t[0]===subject.value)?.[1]||'Choose the topic that best fits your message.';document.querySelectorAll('[data-contact-intent]').forEach(a=>{if(topics[a.dataset.contactIntent]?.[0]===subject.value)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});}
-  function applyIntent(key){if(topics[key])subject.value=topics[key][0];syncForm();}
-  const params=new URLSearchParams(location.search);applyIntent(params.get('topic'));if(support[params.get('support')])body.value=support[params.get('support')];syncForm();
-  document.querySelectorAll('[data-contact-intent]').forEach(link=>link.addEventListener('click',e=>{e.preventDefault();applyIntent(link.dataset.contactIntent);history.replaceState(null,'','?topic='+link.dataset.contactIntent);subject.focus({preventScroll:true});form.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'start'});}));
-  form.addEventListener('input',syncForm);form.addEventListener('change',syncForm);
+  const notice=document.querySelector('#draft-notice'),draftStatus=document.querySelector('#draft-status'),restore=document.querySelector('#restore-draft'),discard=document.querySelector('#discard-draft'),eventNotice=document.querySelector('#contact-event-context');
+  const params=new URLSearchParams(location.search);
+  let contextKey=contactContextKey(params);
+  const fields=()=>Object.fromEntries(['name','email','subject','message'].map(key=>[key,form.elements[key].value]));
+  const messageWithContext=()=>eventContext?eventEnquiryContext(eventContext)+'\n\n'+body.value:eventId?'Event link: '+eventLink(eventId)+'\n\n'+body.value:body.value;
+  function syncForm(){const contextLength=messageWithContext().length-body.value.length;body.maxLength=Math.max(10,5000-contextLength);counter.textContent=body.value.length.toLocaleString('en-CA')+' / '+body.maxLength.toLocaleString('en-CA');emailLink.href=mailtoMessage({...fields(),message:messageWithContext()});help.textContent=Object.values(contactTopics).find(t=>t[0]===subject.value)?.[1]||'Choose the topic that best fits your message.';document.querySelectorAll('[data-contact-intent]').forEach(a=>{if(contactTopics[a.dataset.contactIntent]?.[0]===subject.value)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});}
+  function storedDrafts(){try{return readDrafts(sessionStorage.getItem(draftKey));}catch{return [];}}
+  function writeDrafts(drafts){try{if(drafts.length)sessionStorage.setItem(draftKey,JSON.stringify(drafts));else sessionStorage.removeItem(draftKey);storageAvailable=true;}catch{storageAvailable=false;}}
+  function saveDraft(){if(!dirty||sending)return;writeDrafts(mergeDrafts(storedDrafts(),draftFrom(fields(),contextKey)));if(!pendingDraft){notice.hidden=false;draftStatus.textContent=storageAvailable?'Draft saved for this tab.':'Your draft is on this page. This browser isn’t allowing session recovery.';restore.hidden=true;}}
+  function discardDraft(context=contextKey){writeDrafts(storedDrafts().filter(d=>d.context!==context));dirty=false;pendingDraft=null;notice.hidden=true;restore.hidden=true;}
+  function restoreDraft(draft){contextKey=draft.context;const savedContext=new URLSearchParams(draft.context);eventId=savedContext.get('event');if(!eventId)eventId='';for(const [key,value]of Object.entries(draft.fields))form.elements[key].value=value;dirty=true;pendingDraft=null;restore.hidden=true;notice.hidden=false;draftStatus.textContent='Your unsent draft has been restored.';syncForm();}
+  function applyIntent(key){if(contactTopics[key])subject.value=contactTopics[key][0];syncForm();}
+  applyIntent(params.get('topic'));if(params.get('topic')==='sponsorship'&&supportIntroductions[params.get('support')])body.value=supportIntroductions[params.get('support')];
+  eventId=params.get('event')?.slice(0,200)||'';
+  const drafts=storedDrafts();writeDrafts(drafts);const matchingDraft=drafts.find(d=>d.context===contextKey),latestDraft=drafts.at(-1);
+  if(matchingDraft||(!location.search&&latestDraft))restoreDraft(matchingDraft||latestDraft);else if(latestDraft){pendingDraft=latestDraft;notice.hidden=false;draftStatus.textContent='You have another unsent message in this tab.';restore.hidden=false;}
+  restore.addEventListener('click',()=>{if(!pendingDraft)return;const draft=pendingDraft;saveDraft();eventContext=null;eventNotice.hidden=true;restoreDraft(draft);loadEventContext();});
+  discard.addEventListener('click',()=>{const hadPending=!!pendingDraft,discardedContext=pendingDraft?.context||contextKey;discardDraft(discardedContext);if(!hadPending){form.reset();eventId='';eventContext=null;eventNotice.hidden=true;syncForm();}else if(Object.values(fields()).some(v=>v.trim())){dirty=true;saveDraft();}draftStatus.textContent=hadPending?'Previous draft discarded.': '';});
+  async function loadEventContext(){
+    if(!eventId)return;const requestedId=eventId;eventNotice.hidden=false;eventNotice.textContent='Finding your selected event…';
+    try{const {response,result}=await fetchJSONTimed(API+'/api/public/calendar');if(!response.ok)throw new Error();const event=normalizeEvents(result).find(e=>e.id===requestedId);if(eventId!==requestedId)return;if(!event)throw new Error();eventContext=event;eventNotice.innerHTML='<span class="section-kicker">About this event</span><h3>'+escape(event.title)+'</h3><p>'+escape(eventRange(event))+'</p><p>'+escape(event.location||'Location to be confirmed')+'</p><a class="text-link" href="'+escape(eventLink(event.id))+'">View event details ↗</a>';}
+    catch{if(eventId!==requestedId)return;eventNotice.textContent='We couldn’t confirm this event’s current details. Its link will be included with your message; please add the title or date if you know it.';}
+    syncForm();
+  }
+  loadEventContext();syncForm();
+  document.querySelectorAll('[data-contact-intent]').forEach(link=>link.addEventListener('click',e=>{e.preventDefault();applyIntent(link.dataset.contactIntent);eventId='';eventContext=null;eventNotice.hidden=true;contextKey=contactContextKey(new URLSearchParams({topic:link.dataset.contactIntent}));history.replaceState(null,'','?topic='+link.dataset.contactIntent);if(dirty)saveDraft();subject.focus({preventScroll:true});form.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'start'});}));
+  const onEdit=()=>{dirty=true;syncForm();if(!pendingDraft)saveDraft();};form.addEventListener('input',onEdit);form.addEventListener('change',onEdit);window.addEventListener('pagehide',saveDraft);
   form.addEventListener('submit',async e=>{
     e.preventDefault();if(sending)return;
     for(const name of ['name','email','message'])form.elements[name].value=form.elements[name].value.trim();
     if(!form.reportValidity())return;
+    if(messageWithContext().length>5000){body.setCustomValidity('Please shorten your message to leave room for the event details.');body.reportValidity();body.addEventListener('input',()=>body.setCustomValidity(''),{once:true});return;}
     if(body.value.length<10){body.setCustomValidity('Please add a message of at least 10 characters.');body.reportValidity();body.addEventListener('input',()=>body.setCustomValidity(''),{once:true});return;}
-    sending=true;button.disabled=true;button.textContent='Sending…';form.setAttribute('aria-busy','true');message.textContent='';message.classList.remove('error');let postStarted=false;
+    dirty=true;saveDraft();sending=true;button.disabled=true;button.textContent='Sending…';form.setAttribute('aria-busy','true');message.textContent='';message.classList.remove('error');let postStarted=false;
     try{
-      const setup=await fetchTimed(API+'/api/public/contact-token',{credentials:'include'});if(!setup.ok)throw new Error('The contact form is unavailable right now. You can try again, or open your message in your mail app below.');
+      const setup=await fetchJSONTimed(API+'/api/public/contact-token',{credentials:'include'});if(!setup.response.ok)throw new Error('The contact form is unavailable right now. You can try again, or open your message in your mail app below.');
       postStarted=true;
-      const response=await fetchTimed(API+'/api/public/contact',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});
-      const result=await response.json();postStarted=false;
+      const {response,result}=await fetchJSONTimed(API+'/api/public/contact',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({...Object.fromEntries(new FormData(form)),message:messageWithContext()})});postStarted=false;
       if(!response.ok)throw new Error(result.error||'Your message couldn’t be sent. Please try again or use the email option below.');
       if(result.ok!==true)throw new Error('We couldn’t confirm that your message arrived. Please email the team before resending.');
-      message.textContent='Your message is in our team inbox. Thanks for getting in touch—we’ll reply to the email you provided.';form.reset();syncForm();message.focus({preventScroll:true});message.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'nearest'});
-    }catch(error){message.classList.add('error');message.textContent=postStarted?'The connection ended before we could confirm delivery. Your message is still here. Please contact the team by email before resending.':error.message||'Check your connection, or use the email option below.';syncForm();message.focus({preventScroll:true});}
+      message.textContent='Your message is in our team inbox. Thanks for getting in touch—we’ll reply to the email you provided.';discardDraft();form.reset();eventId='';eventContext=null;eventNotice.hidden=true;syncForm();message.focus({preventScroll:true});message.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'nearest'});
+    }catch(error){message.classList.add('error');message.textContent=postStarted?'The connection ended before we could confirm delivery. Your draft is still here. Please contact the team by email before resending.':error.message||'Check your connection, or use the email option below.';syncForm();message.focus({preventScroll:true});}
     finally{sending=false;button.disabled=false;button.innerHTML=buttonLabel;form.setAttribute('aria-busy','false');}
   });
 }

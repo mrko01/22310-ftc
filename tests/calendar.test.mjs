@@ -58,3 +58,10 @@ test('timed overnight events stay upcoming until their actual end instant',()=>{
  const event={...sample,starts:Date.parse('2026-10-04T03:00Z'),ends:Date.parse('2026-10-04T06:00Z')};
  assert.equal(isUpcoming(event,Date.parse('2026-10-04T05:59:59Z')),true);assert.equal(isUpcoming(event,Date.parse('2026-10-04T06:00Z')),false);
 });
+
+import {eventLink,eventContactLink,eventEnquiryContext} from '../src/calendar.mjs';
+test('event sharing and enquiry routes safely preserve unusual public identifiers',()=>{
+ const id='outreach & build/one?two#three';
+ assert.equal(new URL(eventLink(id)).searchParams.get('event'),id);assert.equal(new URL(eventContactLink(id),'https://22310.ca').searchParams.get('event'),id);assert.equal(new URL(eventContactLink(id),'https://22310.ca').searchParams.get('topic'),'visit');
+ const context=eventEnquiryContext(sample);assert.ok(context.includes('Regarding: Build practice'));assert.ok(context.includes('Location: Workshop'));assert.ok(context.includes('https://22310.ca/events/?event=test'));
+});

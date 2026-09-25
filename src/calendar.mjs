@@ -41,3 +41,7 @@ export function calendarICS(events) {
 
 // All-day end dates are exclusive UTC date values, but the public calendar day is Toronto's.
 export const isUpcoming = (event, now=Date.now()) => event.all_day ? dateKey(event.ends,true)>dateKey(now) : event.ends>now;
+
+export const eventLink = (eventId,base='https://22310.ca') => new URL('/events/?'+new URLSearchParams({event:eventId}),base).href;
+export const eventContactLink = eventId => '/contact/?'+new URLSearchParams({topic:'visit',event:eventId});
+export const eventEnquiryContext = event => 'Regarding: '+event.title+'\nWhen: '+eventRange(event)+'\nLocation: '+(event.location||'To be confirmed')+'\nEvent: '+eventLink(event.id);
