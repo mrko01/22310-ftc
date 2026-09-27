@@ -1,5 +1,5 @@
 import {build} from 'esbuild';
-import {readFileSync,writeFileSync,copyFileSync,mkdirSync,readdirSync} from 'node:fs';
+import {readFileSync,writeFileSync,copyFileSync,mkdirSync,readdirSync,rmSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {pages,navigation,footer,site} from '../src/pages.mjs';
@@ -43,6 +43,8 @@ function structuredData(path,page){
   ]});
   return {'@context':'https://schema.org','@graph':graph};
 }
+rmSync('dist/sponsors/brief',{recursive:true,force:true});
+rmSync('dist/assets/saffron-partnership-brief.pdf',{force:true});
 mkdirSync('dist/assets',{recursive:true});
 for(const name of readdirSync('src/assets'))copyFileSync('src/assets/'+name,'dist/assets/'+name);
 const scene=await build({entryPoints:['dist/assets/mascot.js'],outfile:'dist/assets/mascot.bundle.js',bundle:true,minify:true,format:'esm',target:'es2022',legalComments:'linked',metafile:true});
@@ -69,5 +71,6 @@ const publicPages=Object.entries(pages).filter(([path])=>path!=='404');
 writeFileSync('dist/robots.txt',`# EDIT Saffron's public website is intentionally crawlable, including by AI search and assistant crawlers.\nUser-agent: *\nAllow: /\n\nSitemap: ${site.url}sitemap.xml\n`);
 writeFileSync('dist/sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${publicPages.map(([path])=>`<url><loc>${pageUrl(path)}</loc></url>`).join('')}</urlset>\n`);
 writeFileSync('dist/llms.txt',`# ${site.name}\n\n> ${site.description}\n\n${site.name} is an independent FIRST® Tech Challenge robotics team based at ${site.school} in ${site.city}, ${site.region}. The public site covers the team's students, engineering disciplines, competition calendar, outreach, and contact information.\n\n## Public pages\n\n${publicPages.map(([path,page])=>`- [${page.title.replace(' · EDIT Saffron','')}](${pageUrl(path)}): ${page.description}`).join('\n')}\n\n## Public-site scope\n\nThis file describes only the public website at ${site.url}. Use the linked pages as the source of truth for current public information.\n`);
+writeFileSync('dist/_redirects','/sponsors/brief/ /sponsors/ 301\n/sponsors/brief /sponsors/ 301\n/assets/saffron-partnership-brief.pdf /sponsors/ 301\n');
 writeFileSync('dist/_headers',`/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Language: en-CA\n  X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: default-src 'self'; script-src 'self' ${cspHashes.join(' ')}; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'\n/assets/*\n  Cache-Control: public, max-age=3600\n/robots.txt\n  Cache-Control: public, max-age=3600\n/sitemap.xml\n  Cache-Control: public, max-age=3600\n/llms.txt\n  Cache-Control: public, max-age=3600\n/404.html\n  X-Robots-Tag: noindex\n`);
 for(const name of ['site.js','site.css','mascot.bundle.js']){const bytes=readFileSync('dist/assets/'+name);console.log(name+': '+(bytes.length/1024).toFixed(1)+' KB / '+(gzipSync(bytes).length/1024).toFixed(1)+' KB gzip');}

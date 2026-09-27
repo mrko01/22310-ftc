@@ -32,3 +32,22 @@
 @media print{.no-js .site-header,.brief-download-actions{display:none!important}.no-js .brief-page{padding:0}}
 @media(max-width:850px){.login-link{min-height:44px}.scene-controls button{min-height:44px}}
 @media print{.brief-brand{margin-bottom:30px}.team-brief h1{font-size:60px}.brief-lead{font-size:18px}.brief-facts{margin:29px 0;padding:21px 0}.brief-facts dt{font-size:10px}.brief-facts dd{font-size:12px}.team-brief h2{font-size:25px}.brief-columns p,.brief-columns li,.brief-next p{font-size:12px;line-height:1.85}.brief-next{margin-top:32px;padding-top:25px}.brief-next>a{font-size:25px}.brief-next>span{font-size:12px}}
+
+/* One clear path from the sponsor page to Lo-Ellen Robotics' current package. */
+.package-section{background:#f1eae3}
+.package-feature{display:grid;grid-template-columns:1.2fr .8fr;min-height:450px;overflow:hidden;background:#332126;color:#fcf8f4;text-decoration:none;position:relative}
+.package-feature-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:clamp(38px,5vw,78px);position:relative;z-index:1}
+.package-feature .section-kicker{color:#f3b5a8;margin-bottom:26px}
+.package-feature strong{display:block;font-size:clamp(36px,4.4vw,64px);font-weight:400;line-height:1.06;letter-spacing:-.055em}
+.package-feature-description{font-size:15px;line-height:1.75;color:#e0ced0;max-width:440px;margin-top:22px}
+.package-feature-action{display:inline-flex;align-items:center;gap:22px;margin-top:42px;padding:0 0 11px;border-bottom:1px solid #f3b5a8;color:#fcf8f4;font-size:12px;font-weight:700;letter-spacing:.02em}
+.package-feature-action span{font-size:20px;line-height:1;transition:transform .25s ease}
+.package-feature:hover .package-feature-action span,.package-feature:focus-visible .package-feature-action span{transform:translate(4px,-4px)}
+.package-feature:focus-visible{outline:3px solid var(--saffron);outline-offset:5px}
+.package-feature-art{align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(30px,4vw,62px);background:#a93833;transform:rotate(-4deg) scale(1.12);transform-origin:center;box-shadow:-16px 8px 40px #1b101550;transition:transform .45s ease}
+.package-feature:hover .package-feature-art,.package-feature:focus-visible .package-feature-art{transform:rotate(-2deg) scale(1.15)}
+.package-feature-art>span{font-size:clamp(44px,5.2vw,78px);line-height:.98;letter-spacing:-.065em;font-weight:700}
+.package-art-dot{color:#f8c0aa}
+.package-feature-art small{font-size:12px;line-height:1.5;letter-spacing:.2em;font-weight:700}
+.package-note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:17px}
+@media(max-width:650px){.package-feature{grid-template-columns:1fr;min-height:0}.package-feature-copy{padding:35px 30px 38px}.package-feature .section-kicker{margin-bottom:19px}.package-feature strong{font-size:clamp(38px,10vw,52px)}.package-feature-description{font-size:14px;margin-top:18px}.package-feature-action{margin-top:28px}.package-feature-art{min-height:235px;transform:rotate(-3deg) scale(1.08);padding:30px 37px}.package-feature:hover .package-feature-art,.package-feature:focus-visible .package-feature-art{transform:rotate(-2deg) scale(1.1)}.package-feature-art>span{font-size:55px}.package-feature-art small{font-size:10px}}

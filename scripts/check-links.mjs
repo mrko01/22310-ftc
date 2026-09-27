@@ -17,6 +17,7 @@ for(const [route,file] of files){
     if(url.hash&&target.endsWith('.html')){const anchor=decodeURIComponent(url.hash.slice(1));if(!read(target).includes('id="'+anchor+'"'))errors.push(route+': missing anchor '+raw);}
   }
 }
-const pdf='dist/assets/saffron-partnership-brief.pdf';
-if(!existsSync(pdf)||readFileSync(pdf).subarray(0,5).toString()!=='%PDF-')errors.push('Missing or invalid partnership PDF');
-if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}else console.log(`Checked ${files.size} public pages: internal routes, assets, anchors, unique IDs, H1s, structured data, and PDF are valid.`);
+const sponsor=read('dist/sponsors/index.html');
+if(!sponsor.includes('docs.google.com/presentation/d/1oGsSP_7ACpBvWPNOVP26FnDXzV3fG_IkUBOh9UIbEUo'))errors.push('Missing Lo-Ellen sponsorship package link');
+if(existsSync('dist/assets/saffron-partnership-brief.pdf')||existsSync('dist/sponsors/brief/index.html'))errors.push('Outdated sponsor brief is still published');
+if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}else console.log(`Checked ${files.size} public pages: internal routes, assets, anchors, unique IDs, H1s, structured data, and sponsor package link are valid.`);

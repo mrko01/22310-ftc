@@ -22,7 +22,6 @@ const toggle=document.querySelector('#motion-toggle');
 function syncMotion(){if(toggle){toggle.textContent=paused?'Resume motion':'Pause motion';toggle.setAttribute('aria-pressed',String(paused));}}
 toggle?.addEventListener('click',()=>{paused=!paused;syncMotion();});
 reduced.addEventListener('change',()=>{paused=reduced.matches;syncMotion();if(reduced.matches)document.documentElement.classList.remove('motion-ready');});syncMotion();
-document.querySelector('[data-print]')?.addEventListener('click',()=>window.print());
 const API=document.querySelector('meta[name="saffron-api"]')?.content||'https://team.22310.ca';
 function downloadCalendar(contents,name){const url=URL.createObjectURL(new Blob([contents],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const calendar=document.querySelector('[data-events]');

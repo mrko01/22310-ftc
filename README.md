@@ -8,7 +8,7 @@ Run `npm ci`, `npm test`, and `npm run build` before publishing. The build produ
 
 Cloudflare Pages deploys the committed `dist` directory from the `main` branch. Commit both source and build output, then push to `main`; no Cloudflare build command is required. The public calendar and contact form use the authenticated team worker's public API routes at `https://team.22310.ca`.
 
-The public site includes Home, The team, Events, Sponsors, Contact, and a print-ready partnership brief at `/sponsors/brief/`. Page metadata, navigation, sitemap entries, and structured data are generated from `src/pages.mjs`; add content there rather than editing generated HTML.
+The public site includes Home, The team, Events, Sponsors, and Contact. The Sponsors page links to the Lo-Ellen Robotics sponsorship package on Google Slides. Page metadata, navigation, sitemap entries, and structured data are generated from `src/pages.mjs`; add content there rather than editing generated HTML.
 
 The calendar validates API data before rendering, keeps only a public schedule cache for up to 24 hours, and labels cached results when the network is unavailable. Category/search filters also apply to the upcoming-events `.ics` export. All-day values are date-only UTC data but remain visible through the corresponding Toronto day. Live changes use the public WebSocket, with refresh on reconnect and page wake.
 
@@ -16,6 +16,6 @@ Contact links may preselect `?topic=sponsorship`, `outreach`, `joining`, or `vis
 
 Visitors can share `/events/?event=<public-event-id>` links. Event dialogs copy a canonical link and offer an enquiry link that preserves the event ID; the contact page fetches the public event again and includes its verified title, time, location, and URL with the message. Missing or canceled events receive a clear fallback.
 
-The real downloadable partnership PDF is checked in at `src/assets/saffron-partnership-brief.pdf` and copied to `dist/assets` by the build. When brief content or print styling changes, run `npx playwright install chromium` once if needed, then `npm run export:brief`. This renders the same native brief page as a tagged A4 PDF. `npm run check` rebuilds and validates all generated internal routes, anchors, assets, unique page IDs, structured data, and the downloadable PDF.
+The old locally authored partnership brief and PDF were removed in favor of the Lo-Ellen package. Legacy brief URLs redirect to `/sponsors/`. `npm run check` rebuilds and validates generated internal routes, anchors, assets, unique page IDs, structured data, and the package link.
 
-Without JavaScript, the site exposes mobile navigation, the mascot illustration, an email contact action, calendar guidance, and the PDF download. It never submits contact fields with a GET request.
+Without JavaScript, the site exposes mobile navigation, the mascot illustration, an email contact action, calendar guidance, and the sponsorship package link. It never submits contact fields with a GET request.
