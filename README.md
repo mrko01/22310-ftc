@@ -2,7 +2,7 @@
 
 The website for FTC Team 22310 at https://22310.ca.
 
-Page templates, shared styles, calendar behavior, and brand assets live in `src/`. The existing interactive robot is maintained in `dist/assets/mascot.js` and bundled separately so it does not delay the page.
+Page templates, shared styles, calendar behavior, and brand assets live in `src/`. The interactive robot source is maintained in `src/scene/mascot.js` and bundled separately so it does not delay the page.
 
 Run `npm ci`, `npm test`, and `npm run build` before publishing. The build produces the complete static site in `dist/`, including minified assets and security headers.
 
@@ -19,3 +19,8 @@ Visitors can share `/events/?event=<public-event-id>` links. Event dialogs copy 
 The old locally authored partnership brief and PDF were removed in favor of the Lo-Ellen package. Legacy brief URLs redirect to `/sponsors/`. `npm run check` rebuilds and validates generated internal routes, anchors, assets, unique page IDs, structured data, and the package link.
 
 Without JavaScript, the site exposes mobile navigation, the mascot illustration, an email contact action, calendar guidance, and the sponsorship package link. It never submits contact fields with a GET request.
+
+## Rendering and accessibility
+The mascot retains Three.js/WebGL2: it is a small authored scene with no need for a game engine, physics runtime, or an additional model-viewer layer. Visual quality comes from studio environment lighting, softer contact shadows and bounded high-DPI rendering. WebGPU was considered; the official Three.js renderer guide still describes WebGL2 fallback. Migrating the renderer would not by itself improve this model. See https://threejs.org/manual/pages/webgpurenderer and https://threejs.org/manual/pages/responsive.html.
+
+The canvas uses a pixel budget (1.1 MP for touch/data-saving devices; 2.4 MP for desktop), 30/60 fps targets, and suspends rendering offscreen, when the tab is hidden, and after paused poses settle. A static illustration remains available without JavaScript/WebGL or during context loss. The scene supports keyboard rotation, greeting, and Reset view. Random ambient throws were removed to keep the hero focused.

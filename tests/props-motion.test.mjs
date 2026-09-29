@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FLOOR_Y,PROP_LANE_Z,propTypes,propSequence,seededRandom,createFlight,sampleFlight} from '../dist/assets/props-motion.js';
+import {FLOOR_Y,PROP_LANE_Z,propTypes,propSequence,seededRandom,createFlight,sampleFlight} from '../src/scene/props-motion.js';
 
 test('each set includes all five props without immediate repeats, spaced 4–7 seconds apart',()=>{
   const next=propSequence(seededRandom(22310));let last;

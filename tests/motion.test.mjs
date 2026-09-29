@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {smoothDamp,poseAt,roverStops} from '../dist/assets/motion.js';
+import {smoothDamp,poseAt,roverStops} from '../src/scene/motion.js';
 
 test('rapid section skips remain finite and respect joint speed limits',()=>{
   for(const fps of [20,30,60,120]){
@@ -32,14 +32,14 @@ test('all rover travel segments maintain space around the mascot footprint',()=>
 });
 
 test('ramp stays clear of the mascot and meets the floor at both ends',async()=>{
-  const {rampHeight}=await import('../dist/assets/motion.js');
+  const {rampHeight}=await import('../src/scene/motion.js');
   assert.equal(rampHeight(2.12,-.45),0);assert.equal(rampHeight(2.12,1.05),0);
   assert.equal(rampHeight(2.12,.3),.18);
   for(let x=-1.4;x<=1.4;x+=.02)for(let z=-2;z<2;z+=.05)assert.equal(rampHeight(x,z),0);
   for(let z=-.45;z<=1.05;z+=.01)assert.ok(rampHeight(2.12,z)>=0&&rampHeight(2.12,z)<=.18);
 });
 test('rover route and turning trick have continuous, bounded motion',async()=>{
-  const {roverMotion,roverDurations,smootherstep}=await import('../dist/assets/motion.js');
+  const {roverMotion,roverDurations,smootherstep}=await import('../src/scene/motion.js');
   const duration=roverDurations.reduce((a,b)=>a+b,0);
   for(const fps of [20,30,60,120]){
     let last=roverMotion(0);

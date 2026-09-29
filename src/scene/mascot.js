@@ -1,6 +1,6 @@
+import {sceneQuality, shouldRender} from './quality.mjs';
 import {createChapterProps} from './chapter-props.js';
 import {createTeamConfetti} from './team-confetti.js';
-import {createSceneProps} from './scene-props.js';
 import {FLOOR_Y} from './props-motion.js';
 import {smoothDamp, poseAt, roverStops, rampHeight, roverMotion, roverDwell, smootherstep} from './motion.js';
 import * as THREE from './vendor/three.module.js';
@@ -10,20 +10,21 @@ import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 export function startMascot(isPaused) {
   const canvas=document.querySelector('#robot');
   const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
+  let quality=sceneQuality({width:canvas.clientWidth,height:canvas.clientHeight,pixelRatio:devicePixelRatio,coarse:matchMedia('(pointer:coarse)').matches,saveData:!!navigator.connection?.saveData});
+  renderer.setPixelRatio(quality.pixelRatio);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=.93;
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
+  renderer.toneMappingExposure=1.04;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();
   const environment=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);
   const environmentMap=pmrem.fromScene(environment,.03);scene.environment=environmentMap.texture;scene.environmentIntensity=.65;environment.dispose();pmrem.dispose();
   const camera=new THREE.PerspectiveCamera(31,1,.1,60);camera.position.set(0,1.25,10.6);camera.lookAt(0,.48,0);
   scene.add(new THREE.HemisphereLight(0xfff8ef,0xd4c7b4,1.0));
-  const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.normalBias=.008;key.shadow.bias=-.0001;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=3;scene.add(key);
+  const key=new THREE.DirectionalLight(0xfff7ed,2.7);key.position.set(-3,6,5);key.castShadow=true;key.shadow.mapSize.set(quality.shadowSize,quality.shadowSize);key.shadow.normalBias=.008;key.shadow.bias=-.0001;key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=5;key.shadow.camera.bottom=-4;key.shadow.camera.near=.1;key.shadow.camera.far=20;key.shadow.radius=3;scene.add(key);
   const fill=new THREE.DirectionalLight(0xe5efff,.85);fill.position.set(4,1,3);scene.add(fill);
   const rim=new THREE.DirectionalLight(0xffd8d5,2);rim.position.set(2,4,-4);scene.add(rim);
-  const orange=new THREE.MeshPhysicalMaterial({color:0xcf080e,roughness:.32,metalness:.05,clearcoat:.55,clearcoatRoughness:.26});
+  const orange=new THREE.MeshPhysicalMaterial({color:0xc61420,roughness:.38,metalness:.12,clearcoat:.38,clearcoatRoughness:.3});
   const orangeDark=new THREE.MeshStandardMaterial({color:0x980d18,roughness:.42,metalness:.15});
   const graphite=new THREE.MeshPhysicalMaterial({color:0x302426,roughness:.28,metalness:.55,clearcoat:.4});
   const rubber=new THREE.MeshStandardMaterial({color:0x343b37,roughness:.85});
@@ -183,26 +184,52 @@ export function startMascot(isPaused) {
   rounded(ramp,[.43,.006,1.17],[0,.183,0],rampTread,.002);
   for(const z of [-.59,.59])rounded(ramp,[.43,.008,.025],[0,.186,z],orange,.003);
   // Reuse materials and the existing wheel geometry; no extra texture downloads.
-  const sceneProps=createSceneProps(scene,camera,ground.material.map);
   const teamConfetti=createTeamConfetti(scene);
   const chapterProps=createChapterProps(scene,ground.material.map);
   const wheelContact=new THREE.Vector3(),wheelRotation=new THREE.Matrix4();
 
   let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
-  const resize=()=>{const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));camera.lookAt(0,.48,0);camera.updateProjectionMatrix();};new ResizeObserver(resize).observe(canvas);
-  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;}).observe(canvas);
-  canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);}});
-  canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}});
-  canvas.addEventListener('pointerleave',()=>{lookX=0;lookY=0;});for(const type of ['pointerup','pointercancel'])canvas.addEventListener(type,()=>drag=false);
-  const wave=()=>{waveStart=waveClock;};document.querySelector('#explode-toggle')?.addEventListener('click',wave);
-  canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','w','W'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft')targetAngle-=.2;else if(e.key==='ArrowRight')targetAngle+=.2;else wave();}});
+  let activeUntil=performance.now()+1500,disposed=false,running=false,contextLost=false;
+  const listeners=new AbortController();
+  const listen=(target,event,handler,options={})=>target?.addEventListener(event,handler,{...options,signal:listeners.signal});
+  const resume=()=>{
+    if(disposed||contextLost)return;
+    const render=shouldRender({visible,hidden:document.hidden,paused:isPaused(),now:performance.now(),activeUntil});
+    if(render&&!running){lastTick=0;lastFrame=0;running=true;renderer.setAnimationLoop(frame);}
+    else if(!render&&running){running=false;renderer.setAnimationLoop(null);}
+  };
+  const invalidate=(duration=700)=>{activeUntil=performance.now()+duration;resume();};
+  const resize=()=>{
+    const r=canvas.getBoundingClientRect();if(!r.width||!r.height)return;
+    quality=sceneQuality({width:r.width,height:r.height,pixelRatio:devicePixelRatio,coarse:matchMedia('(pointer:coarse)').matches,saveData:!!navigator.connection?.saveData});
+    renderer.setPixelRatio(quality.pixelRatio);renderer.setSize(r.width,r.height,false);
+    camera.aspect=r.width/r.height;camera.position.z=Math.max(10.6,3.25/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect));
+    camera.lookAt(0,.48,0);camera.updateProjectionMatrix();invalidate();
+  };
+  const sizeObserver=new ResizeObserver(resize);sizeObserver.observe(canvas);
+  const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;invalidate();});visibilityObserver.observe(canvas);
+  listen(document,'visibilitychange',()=>{if(document.hidden)resume();else invalidate();});
+  listen(window,'pageshow',()=>invalidate());
+  listen(canvas,'pointerdown',e=>{if(e.pointerType==='mouse'){drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);invalidate();}});
+  listen(canvas,'pointermove',e=>{const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}invalidate();});
+  listen(canvas,'pointerleave',()=>{lookX=0;lookY=0;invalidate();});
+  for(const type of ['pointerup','pointercancel'])listen(canvas,type,()=>{drag=false;invalidate();});
+  const wave=()=>{waveStart=waveClock;invalidate(3200);};listen(document.querySelector('#explode-toggle'),'click',wave);
+  listen(document.querySelector('#motion-toggle'),'click',()=>invalidate());
+  listen(document.querySelector('#reset-view'),'click',()=>{targetAngle=-.25;lookX=0;lookY=0;invalidate(1500);});
+  listen(matchMedia('(prefers-reduced-motion: reduce)'),'change',()=>invalidate());
+  listen(canvas,'keydown',e=>{if(['ArrowLeft','ArrowRight','w','W'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft')targetAngle-=.2;else if(e.key==='ArrowRight')targetAngle+=.2;else wave();invalidate(e.key.toLowerCase()==='w'?3200:700);}});
+  const fallback=document.querySelector('.mascot-fallback');
+  listen(canvas,'webglcontextlost',event=>{event.preventDefault();contextLost=true;running=false;renderer.setAnimationLoop(null);canvas.style.visibility='hidden';if(fallback)fallback.hidden=false;});
+  listen(canvas,'webglcontextrestored',()=>{contextLost=false;canvas.style.visibility='';if(fallback)fallback.hidden=true;invalidate();});
   const ease=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
   const velocities=new Map();
-  renderer.setAnimationLoop(t=>{
-    if(document.hidden||!visible){lastTick=t;return;}if(t-lastFrame<24)return;lastFrame=t;
+  function frame(t){
+    if(!shouldRender({visible,hidden:document.hidden,paused:isPaused(),now:t,activeUntil})){resume();return;}
+    if(t-lastFrame<quality.frameInterval-.5)return;lastFrame=t;
     const dt=lastTick?Math.min(.05,Math.max(0,(t-lastTick)/1000)):1/30;lastTick=t;
     const paused=isPaused();waveClock+=dt;if(!paused)idleTime+=dt;
-    const propFocus=sceneProps.update(dt,paused);
+    const propFocus=null;
     const sec=idleTime,elapsed=waveClock-waveStart;
     const chapter=Number(document.querySelector('.home-journey')?.dataset.chapter||0);
     teamConfetti.update(dt,chapter,paused);
@@ -295,6 +322,17 @@ export function startMascot(isPaused) {
       for(const material of boardMaterials)material.opacity=boardAmount;
     }
     renderer.render(scene,camera);
+  }
+  resize();
+  listen(window,'pagehide',event=>{
+    renderer.setAnimationLoop(null);running=false;
+    if(event.persisted)return;
+    disposed=true;sizeObserver.disconnect();visibilityObserver.disconnect();listeners.abort();
+    teamConfetti.dispose();chapterProps.dispose();
+    const geometries=new Set(),materials=new Set(),textures=new Set();
+    scene.traverse(object=>{if(object.geometry)geometries.add(object.geometry);for(const material of [object.material].flat().filter(Boolean)){materials.add(material);for(const value of Object.values(material))if(value?.isTexture)textures.add(value);}});
+    geometries.forEach(item=>item.dispose());materials.forEach(item=>item.dispose());textures.forEach(item=>item.dispose());
+    renderer.dispose();environmentMap.dispose();
   });
-  resize();window.addEventListener('pagehide',event=>{if(event.persisted)return;renderer.setAnimationLoop(null);sceneProps.dispose();teamConfetti.dispose();chapterProps.dispose();renderer.dispose();environmentMap.dispose();});
 }
+

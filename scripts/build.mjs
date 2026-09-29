@@ -47,7 +47,7 @@ rmSync('dist/sponsors/brief',{recursive:true,force:true});
 rmSync('dist/assets/saffron-partnership-brief.pdf',{force:true});
 mkdirSync('dist/assets',{recursive:true});
 for(const name of readdirSync('src/assets'))copyFileSync('src/assets/'+name,'dist/assets/'+name);
-const scene=await build({entryPoints:['dist/assets/mascot.js'],outfile:'dist/assets/mascot.bundle.js',bundle:true,minify:true,format:'esm',target:'es2022',legalComments:'linked',metafile:true});
+const scene=await build({entryPoints:['src/scene/mascot.js'],outfile:'dist/assets/mascot.bundle.js',bundle:true,minify:true,format:'esm',target:'es2022',legalComments:'linked',metafile:true});
 writeFileSync('bundle-report.json',JSON.stringify(scene.metafile,null,2));
 const sceneHash=hash(readFileSync('dist/assets/mascot.bundle.js'));
 const js=await build({entryPoints:['src/site.js'],bundle:true,write:false,format:'esm',minify:true,target:'es2022',external:['./mascot.bundle.js']});

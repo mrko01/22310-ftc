@@ -73,7 +73,7 @@ if(calendar){
   async function load(){
     if(busy){queued=true;return;}busy=true;calendar.setAttribute('aria-busy','true');
     try{const {response,result}=await fetchJSONTimed(API+'/api/public/calendar');if(!response.ok)throw new Error();events=normalizeEvents(result);ready=true;stale=false;lastFetched=Date.now();try{localStorage.setItem(cacheKey,JSON.stringify({events,fetched:lastFetched}));}catch{}render();renderStatus();syncLinkedEvent();}
-    catch{stale=true;if(ready){render();renderStatus();syncLinkedEvent();}else{if(status)status.textContent='You can try again or contact the team for the latest dates.';calendar.innerHTML='<div class="event-empty"><h3>The schedule is taking a break.</h3><p>We couldn’t reach the live calendar. Your next step is still here.</p><button class="text-link" id="retry-calendar">Try again ↗</button><a class="text-link" href="/contact/?topic=visit">Ask about a date ↗</a></div>';calendar.querySelector('#retry-calendar').addEventListener('click',load);}}
+    catch{stale=true;if(ready){render();renderStatus();syncLinkedEvent();}else{if(status)status.textContent='You can try again or contact the team for the latest dates.';calendar.innerHTML='<div class="event-empty"><h3>The calendar is unavailable.</h3><p>Try again, or contact the team for current dates.</p><button class="text-link" id="retry-calendar">Try again ↗</button><a class="text-link" href="/contact/?topic=visit">Ask about a date ↗</a></div>';calendar.querySelector('#retry-calendar').addEventListener('click',load);}}
     finally{busy=false;calendar.setAttribute('aria-busy','false');if(queued){queued=false;void load();}}
   }
   try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(saved&&Number.isFinite(saved.fetched)&&Date.now()-saved.fetched>=0&&Date.now()-saved.fetched<86400000){events=normalizeEvents(saved.events);lastFetched=saved.fetched;ready=true;stale=true;render();renderStatus();}}catch{}
@@ -151,6 +151,6 @@ if(form){
 }
 // Keep the existing illustration if WebGL is unavailable. Load 3D after the interface paints.
 if(document.querySelector('#robot')){
-  const loadScene=()=>import('./mascot.bundle.js').then(({startMascot})=>{startMascot(()=>paused);document.querySelector('.mascot-fallback').hidden=true;}).catch(()=>{document.querySelector('#robot').hidden=true;document.querySelector('#explode-toggle').hidden=true;document.querySelector('#motion-toggle').hidden=true;});
+  const loadScene=()=>import('./mascot.bundle.js').then(({startMascot})=>{startMascot(()=>paused);document.querySelector('.mascot-fallback').hidden=true;}).catch(()=>{document.querySelector('#robot').hidden=true;document.querySelector('#explode-toggle').hidden=true;document.querySelector('#motion-toggle').hidden=true;document.querySelector('#reset-view')?.setAttribute('hidden','');});
   if('requestIdleCallback'in window)requestIdleCallback(loadScene,{timeout:1200});else setTimeout(loadScene,150);
 }
