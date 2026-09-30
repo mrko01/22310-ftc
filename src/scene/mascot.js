@@ -188,7 +188,7 @@ export function startMascot(isPaused) {
   const chapterProps=createChapterProps(scene,ground.material.map);
   const wheelContact=new THREE.Vector3(),wheelRotation=new THREE.Matrix4();
 
-  let targetAngle=-.25,drag=false,lastX=0,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
+  let targetAngle=-.25,drag=false,lastX=0,dragStartX=0,dragStartY=0,horizontalDrag=false,waveStart=-10000,lastFrame=0,visible=true,lookX=0,lookY=0;
   let activeUntil=performance.now()+1500,disposed=false,running=false,contextLost=false;
   const listeners=new AbortController();
   const listen=(target,event,handler,options={})=>target?.addEventListener(event,handler,{...options,signal:listeners.signal});
@@ -210,18 +210,18 @@ export function startMascot(isPaused) {
   const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;invalidate();});visibilityObserver.observe(canvas);
   listen(document,'visibilitychange',()=>{if(document.hidden)resume();else invalidate();});
   listen(window,'pageshow',()=>invalidate());
-  listen(canvas,'pointerdown',e=>{if(e.pointerType==='mouse'){drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);invalidate();}});
-  listen(canvas,'pointermove',e=>{const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}invalidate();});
+  listen(canvas,'pointerdown',e=>{if(!e.isPrimary||(e.pointerType==='mouse'&&e.button!==0))return;drag=true;horizontalDrag=e.pointerType==='mouse';lastX=dragStartX=e.clientX;dragStartY=e.clientY;canvas.setPointerCapture(e.pointerId);invalidate();});
+  listen(canvas,'pointermove',e=>{if(!e.isPrimary)return;const r=canvas.getBoundingClientRect();lookX=(e.clientX-r.left)/r.width-.5;lookY=(e.clientY-r.top)/r.height-.5;if(drag&&!horizontalDrag){const dx=Math.abs(e.clientX-dragStartX),dy=Math.abs(e.clientY-dragStartY);if(dx>8&&dx>dy)horizontalDrag=true;else if(dy>8&&dy>=dx)drag=false;}if(drag&&horizontalDrag){targetAngle+=(e.clientX-lastX)*.008;lastX=e.clientX;}invalidate();});
   listen(canvas,'pointerleave',()=>{lookX=0;lookY=0;invalidate();});
-  for(const type of ['pointerup','pointercancel'])listen(canvas,type,()=>{drag=false;invalidate();});
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])listen(canvas,type,()=>{drag=false;invalidate();});
   const wave=()=>{waveStart=waveClock;invalidate(3200);};listen(document.querySelector('#explode-toggle'),'click',wave);
   listen(document.querySelector('#motion-toggle'),'click',()=>invalidate());
   listen(document.querySelector('#reset-view'),'click',()=>{targetAngle=-.25;lookX=0;lookY=0;invalidate(1500);});
   listen(matchMedia('(prefers-reduced-motion: reduce)'),'change',()=>invalidate());
   listen(canvas,'keydown',e=>{if(['ArrowLeft','ArrowRight','w','W'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft')targetAngle-=.2;else if(e.key==='ArrowRight')targetAngle+=.2;else wave();invalidate(e.key.toLowerCase()==='w'?3200:700);}});
-  const fallback=document.querySelector('.mascot-fallback');
-  listen(canvas,'webglcontextlost',event=>{event.preventDefault();contextLost=true;running=false;renderer.setAnimationLoop(null);canvas.style.visibility='hidden';if(fallback)fallback.hidden=false;});
-  listen(canvas,'webglcontextrestored',()=>{contextLost=false;canvas.style.visibility='';if(fallback)fallback.hidden=true;invalidate();});
+  const fallback=document.querySelector('.mascot-fallback'),controls=document.querySelector('.scene-controls');
+  listen(canvas,'webglcontextlost',event=>{event.preventDefault();contextLost=true;drag=false;running=false;renderer.setAnimationLoop(null);canvas.style.visibility='hidden';if(fallback)fallback.hidden=false;if(controls)controls.hidden=true;});
+  listen(canvas,'webglcontextrestored',()=>{contextLost=false;canvas.style.visibility='';if(fallback)fallback.hidden=true;if(controls)controls.hidden=false;invalidate();});
   const ease=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
   const velocities=new Map();
   function frame(t){
@@ -335,4 +335,3 @@ export function startMascot(isPaused) {
     renderer.dispose();environmentMap.dispose();
   });
 }
-

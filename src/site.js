@@ -1,4 +1,4 @@
-import {escapeHTML as escape,dateKey,formatDate,timeLabel,eventsOnDay,ics,normalizeEvents,filterEvents,eventRange,googleCalendarUrl,calendarICS,isUpcoming,eventLink,eventContactLink,eventEnquiryContext} from './calendar.mjs';
+import {escapeHTML as escape,dateKey,formatDate,timeLabel,agendaTimeLabel,eventsOnDay,ics,normalizeEvents,filterEvents,eventRange,googleCalendarUrl,calendarICS,isUpcoming,eventLink,eventContactLink,eventEnquiryContext} from './calendar.mjs';
 import {contactTopics,supportIntroductions,draftKey,draftFrom,readDrafts,mergeDrafts,contactContextKey,mailtoMessage} from './contact.mjs';
 import {fetchJSONTimed} from './network.mjs';
 document.documentElement.classList.remove('no-js');
@@ -42,11 +42,12 @@ if(calendar){
   dialog?.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
   document.querySelector('#event-detail-save')?.addEventListener('click',()=>{const event=events.find(e=>e.id===selectedId);if(event)downloadCalendar(ics(event),'saffron-event.ics');});
   exportButton?.addEventListener('click',()=>{const upcoming=selected().filter(e=>isUpcoming(e));if(upcoming.length)downloadCalendar(calendarICS(upcoming),'saffron-upcoming-events.ics');});
-  function clearFilters(){if(filter)filter.value='all';if(search)search.value='';render();}
+  function clearFilters(){if(filter)filter.value='all';if(search)search.value='';render();search?.focus({preventScroll:true});}
   function renderStatus(){if(!status)return;if(stale){status.innerHTML=`${lastFetched?'Showing the last saved schedule from '+escape(new Intl.DateTimeFormat('en-CA',{dateStyle:'medium',timeStyle:'short',timeZone:'America/Toronto'}).format(lastFetched))+' ET. ':''}Live updates are unavailable. <button data-retry>Retry</button>`;status.querySelector('[data-retry]')?.addEventListener('click',load);}else status.textContent=isPreview?'':'Public schedule · '+(lastFetched?'Updated '+new Intl.DateTimeFormat('en-CA',{timeStyle:'short',timeZone:'America/Toronto'}).format(lastFetched)+' ET':'');}
   function render(){
     const focused=document.activeElement,focusedId=calendar.contains(focused)?focused?.dataset.event:null,focusedClass=focused?.className;
     let visible=selected(),upcoming=visible.filter(e=>isUpcoming(e));
+    const hasFilter=(filter&&filter.value!=='all')||search?.value.trim();
     if(exportButton)exportButton.disabled=!upcoming.length;
     if(isPreview)visible=upcoming.slice(0,3);
     const monthControls=document.querySelector('#month-controls');if(monthControls)monthControls.hidden=view!=='month';
@@ -58,23 +59,23 @@ if(calendar){
       if(count)count.textContent=monthEvents.length+' event'+(monthEvents.length===1?'':'s')+' this month';
       document.querySelector('#month-title').textContent=month.toLocaleDateString('en-CA',{month:'long',year:'numeric'});
       const start=new Date(month);start.setDate(1-start.getDay());
-      calendar.innerHTML='<div class="calendar-grid">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=>'<div class="calendar-weekday">'+day+'</div>').join('')+Array.from({length:42},(_,i)=>{const day=new Date(start);day.setDate(day.getDate()+i);const key=`${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;return `<div class="calendar-day ${day.getMonth()!==month.getMonth()?'outside':''} ${key===dateKey(Date.now())?'today':''}"><span ${key===dateKey(Date.now())?'aria-current="date"':''}>${day.getDate()}</span>${eventsOnDay(visible,key).map(e=>`<button class="calendar-item" data-event="${escape(e.id)}" aria-label="${escape(e.title+', '+day.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'})+', '+timeLabel(e))}">${escape(e.title)}</button>`).join('')}</div>`;}).join('')+'</div>';
+      calendar.innerHTML=(!monthEvents.length?`<div class="month-empty"><p>${hasFilter?'No matching events this month.':'No events posted for this month.'}</p>${hasFilter?'<button class="text-link" id="clear-filters">Clear filters ↗</button>':'<button class="text-link" id="show-upcoming">See upcoming events ↗</button>'}</div>`:'')+'<div class="calendar-grid">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=>'<div class="calendar-weekday">'+day+'</div>').join('')+Array.from({length:42},(_,i)=>{const day=new Date(start);day.setDate(day.getDate()+i);const key=`${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;return `<div class="calendar-day ${day.getMonth()!==month.getMonth()?'outside':''} ${key===dateKey(Date.now())?'today':''}"><span ${key===dateKey(Date.now())?'aria-current="date"':''}>${day.getDate()}</span>${eventsOnDay(visible,key).map(e=>`<button class="calendar-item" data-event="${escape(e.id)}" aria-label="${escape(e.title+', '+day.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'})+', '+timeLabel(e))}"><span>${escape(e.title)}</span></button>`).join('')}</div>`;}).join('')+'</div>';
+      calendar.querySelector('#show-upcoming')?.addEventListener('click',()=>{view='agenda';render();document.querySelector('[data-view="agenda"]')?.focus({preventScroll:true});});
     }else{
       if(count)count.textContent=upcoming.length+' upcoming event'+(upcoming.length===1?'':'s');
       visible=isPreview?visible:upcoming;
-      const hasFilter=(filter&&filter.value!=='all')||search?.value.trim();
-      calendar.innerHTML=visible.length?visible.map(e=>`<article class="event-row"><div class="event-date"><strong>${formatDate(e,{day:'numeric'})}</strong><span>${formatDate(e,{month:'short',year:'numeric'})}</span></div><div><span class="event-category">${escape(e.category)}</span><h3><button data-event="${escape(e.id)}">${escape(e.title)}</button></h3><p>${escape(timeLabel(e))}${e.location?' · '+escape(e.location):''}</p></div><button class="event-open" data-event="${escape(e.id)}" aria-label="View ${escape(e.title)}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m8 5 7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></article>`).join(''):`<div class="event-empty"><h3>${hasFilter?'No events match your search.':'More dates are on the way.'}</h3><p>${hasFilter?'Try another search or see every category.':'The next public events haven’t been posted yet. Get in touch if you’re planning a visit.'}</p>${hasFilter?'<button class="text-link" id="clear-filters">Clear filters ↗</button>':'<a class="text-link" href="/contact/?topic=visit">Ask the team ↗</a>'}</div>`;
-      calendar.querySelector('#clear-filters')?.addEventListener('click',clearFilters);
+      calendar.innerHTML=visible.length?visible.map(e=>`<article class="event-row"><div class="event-date"><span class="event-weekday">${formatDate(e,{weekday:'short'})}</span><strong>${formatDate(e,{day:'numeric'})}</strong><span>${formatDate(e,{month:'short',year:'numeric'})}</span></div><div><span class="event-category">${escape(e.category)}</span><h3><button data-event="${escape(e.id)}">${escape(e.title)}</button></h3><p>${escape(agendaTimeLabel(e))}</p>${e.location?'<p class="event-location">'+escape(e.location)+'</p>':''}</div><span class="event-open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m8 5 7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></article>`).join(''):`<div class="event-empty"><h3>${hasFilter?'No events match your search.':'More dates are on the way.'}</h3><p>${hasFilter?'Try another search or see every category.':'The next public events haven’t been posted yet. Get in touch if you’re planning a visit.'}</p>${hasFilter?'<button class="text-link" id="clear-filters">Clear filters ↗</button>':'<a class="text-link" href="/contact/?topic=visit">Ask the team ↗</a>'}</div>`;
     }
+    calendar.querySelector('#clear-filters')?.addEventListener('click',clearFilters);
     calendar.querySelectorAll('[data-event]').forEach(button=>button.addEventListener('click',()=>openEvent(button.dataset.event)));
     if(focusedId)Array.from(calendar.querySelectorAll('[data-event]')).find(button=>button.dataset.event===focusedId&&button.className===focusedClass)?.focus({preventScroll:true});
     if(dialog?.open){if(events.some(e=>e.id===selectedId))openEvent(selectedId,false);else {syncingHistory=true;dialog.close();}}
   }
   async function load(){
-    if(busy){queued=true;return;}busy=true;calendar.setAttribute('aria-busy','true');
+    if(busy){queued=true;return;}const retryFocus=document.activeElement?.matches('#retry-calendar,[data-retry]');busy=true;calendar.setAttribute('aria-busy','true');
     try{const {response,result}=await fetchJSONTimed(API+'/api/public/calendar');if(!response.ok)throw new Error();events=normalizeEvents(result);ready=true;stale=false;lastFetched=Date.now();try{localStorage.setItem(cacheKey,JSON.stringify({events,fetched:lastFetched}));}catch{}render();renderStatus();syncLinkedEvent();}
     catch{stale=true;if(ready){render();renderStatus();syncLinkedEvent();}else{if(status)status.textContent='You can try again or contact the team for the latest dates.';calendar.innerHTML='<div class="event-empty"><h3>The calendar is unavailable.</h3><p>Try again, or contact the team for current dates.</p><button class="text-link" id="retry-calendar">Try again ↗</button><a class="text-link" href="/contact/?topic=visit">Ask about a date ↗</a></div>';calendar.querySelector('#retry-calendar').addEventListener('click',load);}}
-    finally{busy=false;calendar.setAttribute('aria-busy','false');if(queued){queued=false;void load();}}
+    finally{busy=false;calendar.setAttribute('aria-busy','false');if(retryFocus&&document.activeElement===document.body)(calendar.querySelector('[data-event],#retry-calendar')||status?.querySelector('[data-retry]'))?.focus();if(queued){queued=false;void load();}}
   }
   try{const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');if(saved&&Number.isFinite(saved.fetched)&&Date.now()-saved.fetched>=0&&Date.now()-saved.fetched<86400000){events=normalizeEvents(saved.events);lastFetched=saved.fetched;ready=true;stale=true;render();renderStatus();}}catch{}
   let socket,retryTimer,pingTimer,retries=0,stopped=false;
@@ -92,7 +93,7 @@ if(calendar){
   function start(){stopped=false;load();connectLive();}start();
   const wake=()=>{if(document.hidden)closeLive();else{load();connectLive();}};
   document.addEventListener('visibilitychange',wake);window.addEventListener('online',wake);
-  window.addEventListener('offline',()=>{closeLive();stale=true;renderStatus();});
+  window.addEventListener('offline',()=>{closeLive();stale=true;renderStatus();if(dialog?.open)openEvent(selectedId,false);});
   window.addEventListener('pagehide',()=>{stopped=true;closeLive();});window.addEventListener('pageshow',e=>{if(e.persisted)start();});
   filter?.addEventListener('change',()=>{if(ready)render();});search?.addEventListener('input',()=>{if(ready)render();});
   document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;if(ready)render();}));
@@ -109,7 +110,7 @@ if(form){
   let contextKey=contactContextKey(params);
   const fields=()=>Object.fromEntries(['name','email','subject','message'].map(key=>[key,form.elements[key].value]));
   const messageWithContext=()=>eventContext?eventEnquiryContext(eventContext)+'\n\n'+body.value:eventId?'Event link: '+eventLink(eventId)+'\n\n'+body.value:body.value;
-  function syncForm(){const contextLength=messageWithContext().length-body.value.length;body.maxLength=Math.max(10,5000-contextLength);counter.textContent=body.value.length.toLocaleString('en-CA')+' / '+body.maxLength.toLocaleString('en-CA');emailLink.href=mailtoMessage({...fields(),message:messageWithContext()});help.textContent=Object.values(contactTopics).find(t=>t[0]===subject.value)?.[1]||'Choose the topic that best fits your message.';document.querySelectorAll('[data-contact-intent]').forEach(a=>{if(contactTopics[a.dataset.contactIntent]?.[0]===subject.value)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});}
+  function syncForm(){const contextLength=messageWithContext().length-body.value.length;body.maxLength=Math.max(10,5000-contextLength);counter.textContent=body.value.length.toLocaleString('en-CA')+' / '+body.maxLength.toLocaleString('en-CA');emailLink.href=mailtoMessage({...fields(),message:messageWithContext()});document.querySelector('#contact-form-title').textContent=({'Partnership or sponsorship':'Talk sponsorship','Outreach or collaboration':'Plan an outreach visit','Getting involved':'Get involved','Visiting or attending an event':'Ask about an event','Robotics question':'Ask a robotics question'})[subject.value]||'Send us a message';help.textContent=Object.values(contactTopics).find(t=>t[0]===subject.value)?.[1]||'Choose the topic that best fits your message.';document.querySelectorAll('[data-contact-intent]').forEach(a=>{if(contactTopics[a.dataset.contactIntent]?.[0]===subject.value)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});}
   function storedDrafts(){try{return readDrafts(sessionStorage.getItem(draftKey));}catch{return [];}}
   function writeDrafts(drafts){try{if(drafts.length)sessionStorage.setItem(draftKey,JSON.stringify(drafts));else sessionStorage.removeItem(draftKey);storageAvailable=true;}catch{storageAvailable=false;}}
   function saveDraft(){if(!dirty||sending)return;writeDrafts(mergeDrafts(storedDrafts(),draftFrom(fields(),contextKey)));if(!pendingDraft){notice.hidden=false;draftStatus.textContent=storageAvailable?'Draft saved for this tab.':'Your draft is on this page. This browser isn’t allowing session recovery.';restore.hidden=true;}}
@@ -129,7 +130,7 @@ if(form){
     syncForm();
   }
   loadEventContext();syncForm();
-  document.querySelectorAll('[data-contact-intent]').forEach(link=>link.addEventListener('click',e=>{e.preventDefault();applyIntent(link.dataset.contactIntent);eventId='';eventContext=null;eventNotice.hidden=true;contextKey=contactContextKey(new URLSearchParams({topic:link.dataset.contactIntent}));history.replaceState(null,'','?topic='+link.dataset.contactIntent);if(dirty)saveDraft();subject.focus({preventScroll:true});form.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'start'});}));
+  document.querySelectorAll('[data-contact-intent]').forEach(link=>link.addEventListener('click',e=>{e.preventDefault();if(sending)return;applyIntent(link.dataset.contactIntent);eventId='';eventContext=null;eventNotice.hidden=true;contextKey=contactContextKey(new URLSearchParams({topic:link.dataset.contactIntent}));history.replaceState(null,'','?topic='+link.dataset.contactIntent);if(dirty)saveDraft();subject.focus({preventScroll:true});form.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'start'});}));
   const onEdit=()=>{dirty=true;syncForm();if(!pendingDraft)saveDraft();};form.addEventListener('input',onEdit);form.addEventListener('change',onEdit);window.addEventListener('pagehide',saveDraft);
   form.addEventListener('submit',async e=>{
     e.preventDefault();if(sending)return;
@@ -137,20 +138,24 @@ if(form){
     if(!form.reportValidity())return;
     if(messageWithContext().length>5000){body.setCustomValidity('Please shorten your message to leave room for the event details.');body.reportValidity();body.addEventListener('input',()=>body.setCustomValidity(''),{once:true});return;}
     if(body.value.length<10){body.setCustomValidity('Please add a message of at least 10 characters.');body.reportValidity();body.addEventListener('input',()=>body.setCustomValidity(''),{once:true});return;}
-    dirty=true;saveDraft();sending=true;button.disabled=true;button.textContent='Sending…';form.setAttribute('aria-busy','true');message.textContent='';message.classList.remove('error');let postStarted=false;
+    // Capture the complete enquiry before disabling controls. Edits made while a
+    // request is in flight must never be silently removed by its success reset.
+    const payload={...Object.fromEntries(new FormData(form)),message:messageWithContext()};
+    const controls=[...form.querySelectorAll('input,select,textarea,button')],disabled=new Map(controls.map(control=>[control,control.disabled]));
+    dirty=true;saveDraft();sending=true;controls.forEach(control=>control.disabled=true);document.querySelectorAll('[data-contact-intent]').forEach(link=>link.setAttribute('aria-disabled','true'));button.textContent='Sending…';form.setAttribute('aria-busy','true');message.textContent='Sending your message…';message.classList.remove('error');let postStarted=false;
     try{
       const setup=await fetchJSONTimed(API+'/api/public/contact-token',{credentials:'include'});if(!setup.response.ok)throw new Error('The contact form is unavailable right now. You can try again, or open your message in your mail app below.');
       postStarted=true;
-      const {response,result}=await fetchJSONTimed(API+'/api/public/contact',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({...Object.fromEntries(new FormData(form)),message:messageWithContext()})});postStarted=false;
+      const {response,result}=await fetchJSONTimed(API+'/api/public/contact',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});postStarted=false;
       if(!response.ok)throw new Error(result.error||'Your message couldn’t be sent. Please try again or use the email option below.');
       if(result.ok!==true)throw new Error('We couldn’t confirm that your message arrived. Please email the team before resending.');
-      message.textContent='Your message is in our team inbox. Thanks for getting in touch—we’ll reply to the email you provided.';discardDraft();form.reset();eventId='';eventContext=null;eventNotice.hidden=true;syncForm();message.focus({preventScroll:true});message.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'nearest'});
-    }catch(error){message.classList.add('error');message.textContent=postStarted?'The connection ended before we could confirm delivery. Your draft is still here. Please contact the team by email before resending.':error.message||'Check your connection, or use the email option below.';syncForm();message.focus({preventScroll:true});}
-    finally{sending=false;button.disabled=false;button.innerHTML=buttonLabel;form.setAttribute('aria-busy','false');}
+      message.textContent='Your message is in our team inbox. Thanks for getting in touch—we’ll reply to the email you provided.';discardDraft();form.reset();eventId='';eventContext=null;eventNotice.hidden=true;syncForm();
+    }catch(error){message.classList.add('error');message.textContent=postStarted?'The connection ended before we could confirm delivery. Your draft is still here. Please contact the team by email before resending.':error.message||'Check your connection, or use the email option below.';syncForm();}
+    finally{sending=false;controls.forEach(control=>control.disabled=disabled.get(control));document.querySelectorAll('[data-contact-intent]').forEach(link=>link.removeAttribute('aria-disabled'));button.innerHTML=buttonLabel;form.setAttribute('aria-busy','false');message.focus({preventScroll:true});message.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'nearest'});}
   });
 }
 // Keep the existing illustration if WebGL is unavailable. Load 3D after the interface paints.
 if(document.querySelector('#robot')){
-  const loadScene=()=>import('./mascot.bundle.js').then(({startMascot})=>{startMascot(()=>paused);document.querySelector('.mascot-fallback').hidden=true;}).catch(()=>{document.querySelector('#robot').hidden=true;document.querySelector('#explode-toggle').hidden=true;document.querySelector('#motion-toggle').hidden=true;document.querySelector('#reset-view')?.setAttribute('hidden','');});
+  const loadScene=()=>import('./mascot.bundle.js').then(({startMascot})=>{startMascot(()=>paused);document.querySelector('.mascot-fallback').hidden=true;}).catch(()=>{document.querySelector('#robot').hidden=true;document.querySelector('#explode-toggle').hidden=true;document.querySelector('#motion-toggle').hidden=true;document.querySelector('#reset-view')?.setAttribute('hidden','');document.querySelector('.scene-controls')?.setAttribute('hidden','');});
   if('requestIdleCallback'in window)requestIdleCallback(loadScene,{timeout:1200});else setTimeout(loadScene,150);
 }

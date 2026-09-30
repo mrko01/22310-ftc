@@ -65,3 +65,16 @@ test('event sharing and enquiry routes safely preserve unusual public identifier
  assert.equal(new URL(eventLink(id)).searchParams.get('event'),id);assert.equal(new URL(eventContactLink(id),'https://22310.ca').searchParams.get('event'),id);assert.equal(new URL(eventContactLink(id),'https://22310.ca').searchParams.get('topic'),'visit');
  const context=eventEnquiryContext(sample);assert.ok(context.includes('Regarding: Build practice'));assert.ok(context.includes('Location: Workshop'));assert.ok(context.includes('https://22310.ca/events/?event=test'));
 });
+import {agendaTimeLabel} from '../src/calendar.mjs';
+test('agenda times show the full duration without losing overnight or all-day dates',()=>{
+ assert.equal(agendaTimeLabel(sample),'10:00 a.m. – 12:00 p.m. ET');
+ assert.match(agendaTimeLabel({...sample,ends:Date.parse('2026-10-04T06:00Z')}),/Sun, Oct 4 · 2:00 a.m. ET/);
+ assert.equal(agendaTimeLabel({...sample,all_day:true,starts:Date.parse('2026-10-03T00:00Z'),ends:Date.parse('2026-10-05T00:00Z')}),'All day · Through Oct 4');
+});
+test('both calendar destinations keep a link to the current event details',()=>{
+ const event={...sample,id:'visit & lab/one'};
+ const unfolded=ics(event).replace(/\r\n /g,'');
+ assert.ok(unfolded.includes('URL:'+eventLink(event.id)));
+ assert.ok(unfolded.includes('DESCRIPTION:Current details: '+eventLink(event.id)));
+ assert.ok(new URL(googleCalendarUrl(event)).searchParams.get('details').includes(eventLink(event.id)));
+});
