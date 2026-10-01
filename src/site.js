@@ -26,7 +26,7 @@ const API=document.querySelector('meta[name="saffron-api"]')?.content||'https://
 function downloadCalendar(contents,name){const url=URL.createObjectURL(new Blob([contents],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const calendar=document.querySelector('[data-events]');
 if(calendar){
-  let events=[],ready=false,busy=false,queued=false,view='agenda',selectedId=null,lastFetched=0,stale=false,syncingHistory=false;
+  let events=[],ready=false,busy=false,queued=false,view='month',selectedId=null,lastFetched=0,stale=false,syncingHistory=false;
   const todayParts=()=>dateKey(Date.now()).split('-').map(Number);
   const currentMonth=()=>{const [year,month]=todayParts();return new Date(year,month-1,1,12);};
   let month=currentMonth();
@@ -153,9 +153,4 @@ if(form){
     }catch(error){message.classList.add('error');message.textContent=postStarted?'The connection ended before we could confirm delivery. Your draft is still here. Please contact the team by email before resending.':error.message||'Check your connection, or use the email option below.';syncForm();}
     finally{sending=false;controls.forEach(control=>control.disabled=disabled.get(control));document.querySelectorAll('[data-contact-intent]').forEach(link=>link.removeAttribute('aria-disabled'));button.innerHTML=buttonLabel;form.setAttribute('aria-busy','false');message.focus({preventScroll:true});message.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'nearest'});}
   });
-}
-// Keep the existing illustration if WebGL is unavailable. Load 3D after the interface paints.
-if(document.querySelector('#robot')){
-  const loadScene=()=>import('./mascot.bundle.js').then(({startMascot})=>{startMascot(()=>paused);document.querySelector('.mascot-fallback').hidden=true;}).catch(()=>{document.querySelector('#robot').hidden=true;document.querySelector('#explode-toggle').hidden=true;document.querySelector('#motion-toggle').hidden=true;document.querySelector('#reset-view')?.setAttribute('hidden','');document.querySelector('.scene-controls')?.setAttribute('hidden','');});
-  if('requestIdleCallback'in window)requestIdleCallback(loadScene,{timeout:1200});else setTimeout(loadScene,150);
 }

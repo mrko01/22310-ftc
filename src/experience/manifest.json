@@ -1,0 +1,85 @@
+{
+  "source": "Reviewed local robot/field experience",
+  "files": [
+    {
+      "path": "src/experience/main.js",
+      "bytes": 4504,
+      "sha256": "b9a03c7257a77c45aeae5c2c6f0ab4fbf64a575b68ab29b10f1b4965499849ec"
+    },
+    {
+      "path": "src/experience/scene.js",
+      "bytes": 13574,
+      "sha256": "40f6475425b21178950ea7ec2d49b2444b47671b54b2708e3b9d57a0bb30161c"
+    },
+    {
+      "path": "src/experience/materials.js",
+      "bytes": 4974,
+      "sha256": "889c9fe57ef6a4e3b984279a4ce24885de30d7adf3129bb685db574aca6a1d85"
+    },
+    {
+      "path": "src/experience/interactions.js",
+      "bytes": 33033,
+      "sha256": "56b86eb336bd201e99b8d5551586ca24600b776d1306e759589f422da2152051"
+    },
+    {
+      "path": "src/experience/timeline.mjs",
+      "bytes": 2203,
+      "sha256": "71d20f68cb30d8e779e9e710f4afcca8f09d33a3c13df4a19646acbf2708f7d2"
+    },
+    {
+      "path": "src/experience/style.css",
+      "bytes": 11349,
+      "sha256": "3e47f1467d0f1a59b8a08ff14040ce35ff4f6d2da5f5d15ee0ff859a98846c0a"
+    },
+    {
+      "path": "src/assets/robot.glb",
+      "bytes": 3335088,
+      "sha256": "e8fb813482672dcc9f16caae4e7b658e90064c7fd42d982fa15a45d3a9b0a28b"
+    },
+    {
+      "path": "src/assets/field-compressed.glb",
+      "bytes": 8690168,
+      "sha256": "b03a4c8ff3429532c88ef200fcd3f046d49f3faf54d3cd0efd1262283fbb5383"
+    },
+    {
+      "path": "src/assets/field-metadata.json",
+      "bytes": 2034,
+      "sha256": "f194a0e0af93c5b1af6e7bb205435dcaeb5d41c43f304a4f119249dc47f6c8a1"
+    },
+    {
+      "path": "src/assets/studio.hdr",
+      "bytes": 1615248,
+      "sha256": "e7cfda5f4e98e623db12b8bfd0184e048488e4855d9c83e2751fb44a32e80c45"
+    },
+    {
+      "path": "src/assets/robot-poster.png",
+      "bytes": 1830699,
+      "sha256": "e2a1c819b598d9661e4bb683ba6bb0c3ab4dcc292b016a8f209411c8a4fc56d8"
+    },
+    {
+      "path": "src/assets/shooter-poster.png",
+      "bytes": 1112900,
+      "sha256": "bde7519dc39eec03f085c009643d42a7e730467cba5c504dad83afae7a114c27"
+    },
+    {
+      "path": "src/assets/field-poster.png",
+      "bytes": 1039950,
+      "sha256": "adf1a05b2ad5fb32f6e03044dbc728852cff4a08405dd25f53845852a8b2327c"
+    },
+    {
+      "path": "src/assets/neuropol.otf",
+      "bytes": 51656,
+      "sha256": "5b6b7b0536019ebda9c73c48dd1f71ae079a11ae7e3590fd4017f5759f338fc5"
+    },
+    {
+      "path": "src/assets/interactions.css",
+      "bytes": 4682,
+      "sha256": "f56676266bc22f4f5451cb71f0f84e404f7d51d2351746b0fd8debac682ca1fd"
+    },
+    {
+      "path": "src/assets/subpages.css",
+      "bytes": 23395,
+      "sha256": "a74ba898632cb58aa5a7772848d74333713ffed6e3d28aa4c4023d25299aadc8"
+    }
+  ]
+}

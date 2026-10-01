@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {readFile,stat} from 'node:fs/promises';
+import {readFile,stat,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
@@ -7,16 +7,19 @@ import {chromium,webkit} from 'playwright';
 // Every API request is intercepted. This check never sends an enquiry or changes
 // the live schedule, and serves only the existing build on an ephemeral port.
 const root=resolve('dist');
+const csp=(await readFile(resolve(root,'_headers'),'utf8')).match(/Content-Security-Policy: (.*)/)[1];
+await mkdir('review/production-browser',{recursive:true});
 const server=createServer(async(req,res)=>{
   try{
     let path=resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));
     if(path!==root&&!path.startsWith(root+'/'))throw new Error('Outside build');
     if((await stat(path)).isDirectory())path+='/index.html';
+    res.setHeader('Content-Security-Policy',csp);
     res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2'})[extname(path)]||'application/octet-stream');
     res.end(await readFile(path));
   }catch{res.statusCode=404;res.end('Not found');}
 });
-await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
 const base='http://127.0.0.1:'+server.address().port;
 const routes=['/','/team/','/sponsors/','/events/','/contact/','/404.html'];
 const now=Date.now();
@@ -40,13 +43,13 @@ try{
      assert.ok(await page.locator('select').evaluateAll(items=>items.every(item=>item.getBoundingClientRect().height>=44)),'Select touch target '+engine.name()+' '+path);
      assert.equal(await page.evaluate(()=>[...document.images].some(image=>!image.naturalWidth)),false,'Broken image '+path);
      if(path==='/team/'||path==='/sponsors/')assert.ok(await page.locator(path==='/team/'?'.team-hero .button':'.sponsor-hero .button').evaluate(button=>button.getBoundingClientRect().bottom<innerHeight),'Primary action stays in the first screen');
-     assert.deepEqual(errors,[],engine.name()+' page errors');pagesChecked++;
+     assert.deepEqual(errors,[],engine.name()+' page errors');if(width===390||width===1440)await page.screenshot({path:'review/production-browser/'+engine.name()+'-'+width+'-'+(path.replaceAll('/','')||'home')+'.png',fullPage:false});pagesChecked++;
     }
     await page.close();
    }
    const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
    await page.route('**/api/**',route=>route.request().url().endsWith('/calendar')?reply(route,events):reply(route,{error:'Unexpected request'},503));
-   await page.goto(base+'/events/');await page.locator('.event-row').first().waitFor();
+   await page.goto(base+'/events/');await page.locator('.calendar-grid').waitFor();assert.equal(await page.locator('[data-view=month]').getAttribute('aria-pressed'),'true');await page.getByRole('button',{name:'List',exact:true}).click();await page.locator('.event-row').first().waitFor();
    assert.equal(await page.locator('.event-row').first().getByRole('button').count(),1);
    await page.locator('.skip').focus();await page.keyboard.press('Enter');assert.equal(await page.evaluate(()=>document.activeElement.id),'main');
    await page.getByRole('button',{name:'Open menu',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Close menu',exact:true}).getAttribute('aria-expanded'),'true');
@@ -57,7 +60,7 @@ try{
    await page.getByRole('button',{name:'Month',exact:true}).click();await page.locator('.calendar-grid').waitFor();
    assert.ok(await page.locator('.calendar-item').evaluateAll(items=>items.every(item=>item.clientHeight<110)),'Long month titles must stay compact');
    await page.getByRole('searchbox').fill('No matching workshop');await page.getByRole('button',{name:'Clear filters'}).click();assert.equal(await page.evaluate(()=>document.activeElement.id),'event-search');
-   await page.getByRole('button',{name:'Next month'}).click();await page.getByRole('button',{name:'See upcoming events'}).click();assert.equal(await page.locator('[data-view="agenda"]').getAttribute('aria-pressed'),'true');
+   await page.getByRole('button',{name:'Next month'}).click();await page.getByRole('button',{name:'Next month'}).click();await page.getByRole('button',{name:'See upcoming events'}).click();assert.equal(await page.locator('[data-view="agenda"]').getAttribute('aria-pressed'),'true');
    workflowsChecked+=5;await page.close();
 
    const contact=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
@@ -86,37 +89,34 @@ try{
    const failure=await browser.newPage({viewport:{width:390,height:844}});let attempts=0,failAgain=false,removed=false;
    await failure.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('Permission denied'))}}));
    await failure.route('**/api/public/calendar',route=>{attempts++;return reply(route,attempts===1||failAgain?{error:'offline'}:removed?[]:events,attempts===1||failAgain?503:200);});
-   await failure.goto(base+'/events/');await failure.getByRole('button',{name:'Try again'}).focus();await failure.keyboard.press('Enter');await failure.locator('.event-row').first().waitFor();assert.equal(attempts,2);assert.equal(await failure.evaluate(()=>document.activeElement.dataset.event),'visit');
-   failAgain=true;await failure.reload();await failure.waitForFunction(()=>document.querySelector('#calendar-status').textContent.includes('last saved schedule'));assert.equal(await failure.locator('.event-row').count(),2);
+   await failure.goto(base+'/events/');await failure.getByRole('button',{name:'Try again'}).focus();await failure.keyboard.press('Enter');await failure.locator('.calendar-grid').waitFor();assert.equal(await failure.locator('[data-view=month]').getAttribute('aria-pressed'),'true');await failure.getByRole('button',{name:'List',exact:true}).click();await failure.locator('.event-row').first().waitFor();assert.equal(attempts,2);assert.equal(await failure.locator('[data-event=visit]').count(),1);
+   failAgain=true;await failure.reload();await failure.waitForFunction(()=>document.querySelector('#calendar-status').textContent.includes('last saved schedule'));await failure.getByRole('button',{name:'List',exact:true}).click();assert.equal(await failure.locator('.event-row').count(),2);
    await failure.locator('.event-row').first().click();await failure.getByRole('button',{name:'Copy event link'}).click();assert.equal(await failure.locator('#event-link-field').isVisible(),true);assert.equal(await failure.locator('#event-share-url').inputValue(),'https://22310.ca/events/?event=visit');
    failAgain=false;removed=true;await failure.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await failure.locator('#event-dialog').waitFor({state:'hidden'});
    assert.ok((await failure.locator('#calendar-status').innerText()).includes('no longer on the public schedule'));assert.equal(await failure.locator('.event-row').count(),0);assert.equal(await failure.locator('#export-events').isDisabled(),true);workflowsChecked+=4;await failure.close();
    for(const width of [320,1440]){
     const nojs=await browser.newPage({javaScriptEnabled:false,viewport:{width,height:900}});
-    for(const path of routes){await nojs.goto(base+path);assert.equal(await nojs.locator('.site-nav').isVisible(),true);assert.equal(await nojs.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);pagesChecked++;}
+    for(const path of routes){await nojs.goto(base+path);assert.equal(await nojs.locator('.site-header nav').isVisible(),true);assert.equal(await nojs.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);pagesChecked++;}
     await nojs.goto(base+'/contact/');assert.equal(await nojs.locator('.no-script-contact').isVisible(),true);await nojs.close();
    }
-   const fallback=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
-   await fallback.route('**/api/public/calendar',route=>reply(route,[]));
+   const fallback=await browser.newPage({viewport:{width:390,height:844}});
+   const fallbackErrors=[];fallback.on('pageerror',error=>fallbackErrors.push(error.message));
    await fallback.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return String(type).includes('webgl')?null:original.call(this,type,...args);};});
-   await fallback.goto(base);await fallback.locator('#robot').waitFor({state:'hidden'});assert.equal(await fallback.locator('.mascot-fallback').isVisible(),true);assert.equal(await fallback.locator('#reset-view').isVisible(),false);assert.equal(await fallback.locator('.scene-controls').isVisible(),false);workflowsChecked++;await fallback.close();
-   const scene=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce',hasTouch:true,isMobile:true});
-   await scene.route('**/api/public/calendar',route=>reply(route,[]));await scene.goto(base);
-   await scene.locator('.mascot-fallback').waitFor({state:'hidden'});assert.equal(await scene.locator('#motion-toggle').getAttribute('aria-pressed'),'true');
-   assert.ok(await scene.locator('#robot').evaluate(canvas=>getComputedStyle(canvas).touchAction.includes('pan-y')));
-   if(engine===chromium){
-    const session=await scene.context().newCDPSession(scene),box=await scene.locator('#robot').boundingBox();
-    const x=Math.round(box.x+box.width/2),y=Math.round(Math.min(760,box.y+box.height/2));
-    const swipe=async(dx,dy)=>{await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});for(let i=1;i<=5;i++){await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*i/5,y:y+dy*i/5}]});await scene.waitForTimeout(25);}await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await scene.waitForTimeout(150);};
-    await swipe(80,0);assert.equal(await scene.evaluate(()=>scrollY),0,'Horizontal robot gesture does not scroll');
-    await swipe(0,-180);assert.ok(await scene.evaluate(()=>scrollY)>30,'Vertical swipe on the robot still scrolls the page');
-    await scene.evaluate(()=>scrollTo(0,0));await session.detach();workflowsChecked++;
-   }
-   // Synthetic loss exercises our fallback/control state without depending on
-   // browser-specific support for WEBGL_lose_context in the test renderer.
-   await scene.locator('#robot').dispatchEvent('webglcontextlost',{cancelable:true});assert.equal(await scene.locator('.scene-controls').isVisible(),false);assert.equal(await scene.locator('.mascot-fallback').isVisible(),true);
-   await scene.locator('#robot').dispatchEvent('webglcontextrestored');assert.equal(await scene.locator('.scene-controls').isVisible(),true);assert.equal(await scene.locator('.mascot-fallback').isVisible(),false);workflowsChecked++;await scene.close();
+   await fallback.goto(base);await fallback.waitForFunction(()=>window.__SAFFRON_QA__?.state==='fallback');
+   assert.equal(await fallback.locator('#scene-poster').isVisible(),true);
+   assert.equal(await fallback.locator('.scene-controls').count(),0);
+   assert.deepEqual(fallbackErrors,[]);workflowsChecked++;await fallback.close();
+   const reduced=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce',hasTouch:true,isMobile:true});
+   await reduced.goto(base);await reduced.waitForFunction(()=>window.__SAFFRON_QA__?.state==='reduced-motion');
+   assert.equal(await reduced.locator('#scene-poster').isVisible(),true);
+   assert.equal(await reduced.locator('.site-header').count(),1);
+   assert.equal(await reduced.locator('.wordmark').innerText(),'EDIT 22310');
+   assert.equal(await reduced.locator('#motion-toggle').count(),0);
+   assert.equal(await reduced.locator('.chapter[aria-hidden=true]').count(),0);
+   await reduced.screenshot({path:'review/production-browser/'+engine.name()+'-home-mobile.png'});
+   workflowsChecked++;await reduced.close();
   }finally{await browser.close();}
  }
+ await writeFile('review/production-browser/results.json',JSON.stringify({pagesChecked,workflowsChecked,engines:['Chromium','WebKit'],status:'passed',liveWrites:false},null,2));
  console.log(`${pagesChecked} responsive/no-JS pages and ${workflowsChecked} workflow checks passed in Chromium and WebKit. No live writes.`);
 }finally{await new Promise(resolve=>server.close(resolve));}

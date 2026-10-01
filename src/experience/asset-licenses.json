@@ -1,0 +1,16 @@
+{
+  "neuropol.otf": {
+    "sourcePage": "https://typodermicfonts.com/public-domain/",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "5b6b7b0536019ebda9c73c48dd1f71ae079a11ae7e3590fd4017f5759f338fc5",
+    "bytes": 51656
+  },
+  "studio.hdr": {
+    "sourcePage": "https://polyhaven.com/a/studio_small_09",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "e7cfda5f4e98e623db12b8bfd0184e048488e4855d9c83e2751fb44a32e80c45",
+    "bytes": 1615248
+  }
+}
