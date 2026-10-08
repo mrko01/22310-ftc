@@ -1,0 +1,64 @@
+/* Official sponsor artwork stays intact on a light surface with clear space. */
+.sponsor-label{display:block;color:#e9c767;font-size:11px;font-weight:700;letter-spacing:.16em;line-height:1.6;text-transform:uppercase;margin-bottom:13px}
+.sponsor-logo-link{display:block;position:relative;background:#f7f6f2;color:#11161c;padding:22px 32px;text-decoration:none;transition:background .22s,transform .22s;outline-offset:5px}
+.sponsor-logo-link img{display:block;width:100%;height:auto;max-width:100%;object-fit:contain}
+.sponsor-logo-link:hover{background:#fff;transform:translateY(-3px)}
+.sponsor-logo-link:focus-visible{outline:3px solid #e9c767;outline-offset:5px}
+.sponsor-arrow{position:absolute;right:11px;top:9px;font-size:15px;line-height:1;color:#4d4940;transition:transform .22s}
+.sponsor-logo-link:hover .sponsor-arrow{transform:translate(2px,-2px)}
+.sponsor-credit{width:230px}
+.hero-sponsor{position:absolute;left:var(--edge);bottom:calc(4.5% + 8px);animation:sponsor-enter .8s .2s both}
+.hero-sponsor .sponsor-logo-link{padding:18px 27px}
+.hero-sponsor .sponsor-label{margin-bottom:10px}
+.closing-sponsor{position:absolute;right:var(--edge);bottom:calc(15% + 60px);width:210px}
+.closing-sponsor .sponsor-logo-link{padding:17px 25px}
+.footer-sponsor{width:100%;display:flex;align-items:center;justify-content:space-between;gap:28px;border-bottom:1px solid var(--line);padding-bottom:34px;margin-bottom:34px}
+.footer-sponsor .sponsor-label{margin:0}
+.footer-sponsor .sponsor-logo-link{width:220px;flex-shrink:0;padding:18px 27px}
+.title-sponsor-feature{padding:calc(var(--header) + 65px) 0 65px;min-height:min(720px,85svh);display:flex;align-items:center;background:#111113;border-bottom:1px solid #e9c76738}
+.title-sponsor-layout{display:grid;grid-template-columns:1fr 1fr;gap:8%;align-items:center}
+.title-sponsor-copy{animation:sponsor-enter .7s both}
+.title-sponsor-copy .sponsor-label{margin-bottom:30px}
+.title-sponsor-copy h1{font-size:clamp(55px,6.9vw,100px);line-height:1.03;letter-spacing:-.065em;font-weight:400;max-width:6em;margin:0}
+.title-sponsor-copy>p{color:#d4cfd2;font-size:clamp(17px,1.5vw,21px);line-height:1.6;margin-top:25px}
+.title-sponsor-copy>p.sponsor-thanks{font-size:14px;color:#a8a2a8;margin-top:22px;line-height:1.7}
+.title-sponsor-logo{padding:clamp(32px,4vw,60px);animation:sponsor-enter .8s .12s backwards}
+.sponsor-visit{display:flex;align-items:center;justify-content:space-between;gap:20px;font-size:12px;line-height:1.6;margin-top:30px;padding-top:19px;border-top:1px solid #11161c24}
+.sponsor-visit .sponsor-arrow{position:static}
+.sponsor-hero h2{font-size:clamp(64px,7.3vw,110px);line-height:1;letter-spacing:-.065em;font-weight:400}
+.no-js .title-sponsor-feature{padding-top:65px}
+@keyframes sponsor-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:850px){
+ .hero-sponsor{bottom:calc(4% + 5px);width:200px}
+ .hero-sponsor .sponsor-logo-link{padding:16px 24px}
+ .title-sponsor-feature{min-height:0;padding-top:calc(var(--header) + 45px);padding-bottom:45px}
+ .title-sponsor-layout{gap:6%}
+ .title-sponsor-copy h1{font-size:clamp(48px,7vw,64px)}
+ .title-sponsor-logo{padding:30px}
+ .sponsor-hero h2{font-size:clamp(54px,11.5vw,84px)}
+}
+@media(max-width:600px){
+ .hero-sponsor{width:174px;bottom:max(24px,env(safe-area-inset-bottom))}
+ .hero-sponsor .sponsor-label{font-size:9px;margin-bottom:9px}
+ .hero-sponsor .sponsor-logo-link{padding:15px 23px}
+ .hero-bottom{justify-content:flex-end;bottom:27px}
+ .title-sponsor-layout{grid-template-columns:1fr;gap:30px}
+ .title-sponsor-feature{padding-top:calc(var(--header) + 40px);padding-bottom:40px}
+ .title-sponsor-copy .sponsor-label{margin-bottom:18px;font-size:10px}
+ .title-sponsor-copy h1{font-size:56px;max-width:none}
+ .title-sponsor-copy>p{font-size:16px;margin-top:20px}
+ .title-sponsor-copy>p.sponsor-thanks{font-size:13px;margin-top:14px}
+ .title-sponsor-logo{padding:30px 40px}
+ .sponsor-visit{margin-top:23px;padding-top:16px}
+ .closing-sponsor{left:var(--edge);right:auto;bottom:calc(14% + 80px);width:180px}
+ .closing-sponsor .sponsor-logo-link{padding:15px 23px}
+ .closing-sponsor .sponsor-label{font-size:9px}
+ .footer-sponsor{gap:18px;padding-bottom:28px;margin-bottom:28px}
+ .footer-sponsor .sponsor-label{font-size:9px}
+ .footer-sponsor .sponsor-logo-link{width:174px;padding:15px 23px}
+ .sponsor-hero h2{font-size:clamp(44px,11.5vw,64px)}
+}
+@media(max-width:380px){.title-sponsor-copy h1{font-size:49px}.title-sponsor-logo{padding:25px 32px}.footer-sponsor{align-items:flex-start;flex-direction:column}}
+@media(max-height:620px) and (min-width:601px){.hero-sponsor{width:180px}.hero-sponsor .sponsor-logo-link{padding:14px 24px}.hero-sponsor .sponsor-label{font-size:9px}.closing-sponsor{width:180px}}
+@media(prefers-reduced-motion:reduce){.sponsor-logo-link,.sponsor-arrow{transition:none}.sponsor-logo-link:hover{transform:none}.hero-sponsor,.title-sponsor-copy,.title-sponsor-logo{animation:none}}
+@media print{.title-sponsor-feature{min-height:0;padding:30px 0;background:white;color:#111}.sponsor-label{color:#6b5219}.title-sponsor-copy>p,.title-sponsor-copy>p.sponsor-thanks{color:#333}.title-sponsor-copy,.title-sponsor-logo{animation:none}}

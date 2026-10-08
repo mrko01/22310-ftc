@@ -42,7 +42,7 @@ try{
      assert.equal(await page.locator('h1').count(),1);
      assert.ok(await page.locator('select').evaluateAll(items=>items.every(item=>item.getBoundingClientRect().height>=44)),'Select touch target '+engine.name()+' '+path);
      assert.equal(await page.evaluate(()=>[...document.images].some(image=>!image.naturalWidth)),false,'Broken image '+path);
-     if(path==='/team/'||path==='/sponsors/')assert.ok(await page.locator(path==='/team/'?'.team-hero .button':'.sponsor-hero .button').evaluate(button=>button.getBoundingClientRect().bottom<innerHeight),'Primary action stays in the first screen');
+     if(path==='/team/'||path==='/sponsors/')assert.ok(await page.locator(path==='/team/'?'.team-hero .button':'.title-sponsor-logo').evaluate(button=>button.getBoundingClientRect().bottom<innerHeight),'Primary action stays in the first screen');
      assert.deepEqual(errors,[],engine.name()+' page errors');if(width===390||width===1440)await page.screenshot({path:'review/production-browser/'+engine.name()+'-'+width+'-'+(path.replaceAll('/','')||'home')+'.png',fullPage:false});pagesChecked++;
     }
     await page.close();

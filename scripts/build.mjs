@@ -50,9 +50,9 @@ for(const name of readdirSync('src/assets'))copyFileSync('src/assets/'+name,'dis
 const experience=await build({entryPoints:{experience:'src/experience/main.js',scene:'src/experience/scene.js'},outdir:'dist/assets/experience',bundle:true,splitting:true,minify:true,format:'esm',target:'es2022',entryNames:'[name]-[hash]',chunkNames:'chunk-[hash]',legalComments:'linked',metafile:true});
 writeFileSync('bundle-report.json',JSON.stringify(experience.metafile,null,2));
 const experienceEntry=Object.entries(experience.metafile.outputs).find(([,info])=>info.entryPoint==='src/experience/main.js')[0].replace(/^dist/,'');
-await build({entryPoints:['src/experience/style.css'],outfile:'dist/assets/experience.css',minify:true,target:'es2022'});
+await build({stdin:{contents:[readFileSync('src/experience/style.css','utf8'),readFileSync('src/title-sponsor.css','utf8')].join('\n'),loader:'css',resolveDir:process.cwd()},outfile:'dist/assets/experience.css',minify:true,target:'es2022'});
 await build({entryPoints:['src/site.js'],outfile:'dist/assets/site.js',bundle:true,format:'esm',minify:true,target:'es2022'});
-const css=await build({stdin:{contents:[readFileSync('src/site.css','utf8'),readFileSync('src/assets/subpages.css','utf8'),readFileSync('src/production.css','utf8')].join('\n'),loader:'css',resolveDir:process.cwd()},write:false,minify:true,target:'es2022'});
+const css=await build({stdin:{contents:[readFileSync('src/site.css','utf8'),readFileSync('src/assets/subpages.css','utf8'),readFileSync('src/production.css','utf8'),readFileSync('src/title-sponsor.css','utf8')].join('\n'),loader:'css',resolveDir:process.cwd()},write:false,minify:true,target:'es2022'});
 writeFileSync('dist/assets/site.css',css.outputFiles[0].contents);
 const cssHash=hash(readFileSync('dist/assets/site.css')),jsHash=hash(readFileSync('dist/assets/site.js'));
 const experienceCSSHash=hash(readFileSync('dist/assets/experience.css')),interactionsCSSHash=hash(readFileSync('dist/assets/interactions.css'));
