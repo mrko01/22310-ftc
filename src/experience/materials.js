@@ -9,6 +9,7 @@ function surfaceTexture(kind){
     let value;
     if(kind==='brushed')value=190+rows[y]*45+rand()*20;
     else if(kind==='composite'){const weave=((Math.floor(x/8)+Math.floor(y/8))%2===0?Math.sin(y*1.5):Math.sin(x*1.5));value=176+weave*22+rand()*12;}
+    else if(kind==='plastic')value=222+rows[y]*14+rand()*16;
     else value=195+rand()*60;
     const i=(y*size+x)*4;data[i]=data[i+1]=data[i+2]=value;data[i+3]=255;
   }
@@ -25,7 +26,7 @@ function ensureUV(geometry){
   geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
 }
 export function finishRobot(robot){
-  const brushed=surfaceTexture('brushed'),composite=surfaceTexture('composite'),rubber=surfaceTexture('rubber'),finishes=new Map();
+  const brushed=surfaceTexture('brushed'),composite=surfaceTexture('composite'),rubber=surfaceTexture('rubber'),plastic=surfaceTexture('plastic'),finishes=new Map();
   robot.traverse(object=>{
     if(!object.isMesh)return;ensureUV(object.geometry);object.castShadow=true;object.receiveShadow=true;
     const present=original=>{
@@ -37,19 +38,27 @@ export function finishRobot(robot){
       // MeshPhysicalMaterial.copy() trips on standard-only sources in r180;
       // copy the shared standard properties through the prototype instead.
       THREE.MeshStandardMaterial.prototype.copy.call(material,original);
+      // Fusion writes plain colours as "Opaque(r,g,b)". The numbers name the
+      // real CAD colour, so a saturated one is painted and a neutral one is
+      // bare metal or moulded plastic.
+      const opaque=/^Opaque\((\d+),(\d+),(\d+)\)/i.exec(name);
+      let painted=false;
+      if(opaque){const r=+opaque[1],g=+opaque[2],b=+opaque[3];painted=Math.max(r,g,b)-Math.min(r,g,b)>24;}
       if(/polycarbonate|clear|guard/i.test(name)){material.depthWrite=false;material.side=THREE.DoubleSide;material.clearcoat=.55;material.clearcoatRoughness=.12;material.envMapIntensity=1.35;material.forceSinglePass=true}
       else if(/rubber/i.test(name)){material.roughnessMap=rubber;material.bumpMap=rubber;material.bumpScale=.00018;material.envMapIntensity=.85}
       else if(/composite/i.test(name)){material.roughnessMap=composite;material.bumpMap=composite;material.bumpScale=.00015;material.clearcoat=.14;material.clearcoatRoughness=.5;material.envMapIntensity=.95}
       else if(/ABS/i.test(name)){material.roughnessMap=composite;material.bumpMap=composite;material.bumpScale=.00012;material.clearcoat=.22;material.clearcoatRoughness=.4;material.envMapIntensity=1.0}
-      else if(/accent/i.test(name)){material.roughnessMap=brushed;material.bumpMap=brushed;material.bumpScale=.00005;material.clearcoat=.3;material.clearcoatRoughness=.28;material.envMapIntensity=1.2}
+      else if(/accent|orange|saffron|yellow|red|blue|green/i.test(name)){material.roughnessMap=plastic;material.bumpMap=plastic;material.bumpScale=.00004;material.clearcoat=.35;material.clearcoatRoughness=.22;material.envMapIntensity=.95}
       else if(/wire|cable/i.test(name)){material.envMapIntensity=.7}
-      else if(/anodized|aluminum|steel|hardware|satin|^Opaque|connector|housing/i.test(name)){material.roughnessMap=brushed;material.bumpMap=brushed;material.bumpScale=.00005;material.clearcoat=.12;material.clearcoatRoughness=.4;material.envMapIntensity=1.3}
+      else if(painted){material.roughnessMap=plastic;material.bumpMap=plastic;material.bumpScale=.00004;material.clearcoat=.28;material.clearcoatRoughness=.3;material.envMapIntensity=.9}
+      else if(/anodized|aluminum|steel|hardware|satin|connector|housing/i.test(name)){material.roughnessMap=brushed;material.bumpMap=brushed;material.bumpScale=.00005;material.clearcoat=.12;material.clearcoatRoughness=.4;material.envMapIntensity=1.3}
+      else if(opaque){material.roughnessMap=plastic;material.bumpMap=plastic;material.bumpScale=.00004;material.clearcoat=.2;material.clearcoatRoughness=.38;material.envMapIntensity=1.0}
       else{material.roughnessMap=brushed;material.envMapIntensity=1.1}
       material.needsUpdate=true;finishes.set(original,material);return material;
     };
     object.material=Array.isArray(object.material)?object.material.map(present):present(object.material);
   });
-  return {materials:[...finishes.values()],textures:[brushed,composite,rubber]};
+  return {materials:[...finishes.values()],textures:[brushed,composite,rubber,plastic]};
 }
 
 // Source CAD colors and placements remain authoritative. These small shared
