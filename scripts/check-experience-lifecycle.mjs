@@ -10,7 +10,7 @@ const ready=page=>page.waitForFunction(()=>document.body.dataset.renderState==='
 try{
   const context=await browser.newContext();const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   let release,requested;const gate=new Promise(resolve=>release=resolve),request=new Promise(resolve=>requested=resolve);
-  await page.route('**/assets/robot-v2.glb',async route=>{requested();await gate;await route.continue()});
+  await page.route('**/assets/robot-v3.glb',async route=>{requested();await gate;await route.continue()});
   await page.goto(base,{waitUntil:'domcontentloaded'});await request;
   await page.emulateMedia({reducedMotion:'reduce'});await page.emulateMedia({reducedMotion:'no-preference'});release();
   await ready(page);await page.waitForTimeout(400);
