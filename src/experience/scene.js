@@ -28,24 +28,24 @@ function createParticles(mobile){
 export async function createScene(canvas,{onReady,onFallback}){
   const mobile=innerWidth<701;
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
-  renderer.setClearColor(0x121212,1);renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:1.75));
-  renderer.setSize(innerWidth,innerHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;
+  renderer.setClearColor(0x070708,1);renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:1.75));
+  renderer.setSize(innerWidth,innerHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
   const gl=renderer.getContext();if(gl.isContextLost())throw new Error('WebGL context unavailable');
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(31,innerWidth/innerHeight,.02,80);
   const pmrem=new THREE.PMREMGenerator(renderer);let environment;
   try{const hdr=await new RGBELoader().loadAsync('/assets/studio.hdr');environment=pmrem.fromEquirectangular(hdr);hdr.dispose()}
   catch{const room=new RoomEnvironment();environment=pmrem.fromScene(room,.05);room.dispose()}
-  scene.environment=environment.texture;scene.environmentRotation.y=.65;scene.environmentIntensity=1.3;pmrem.dispose();
-  scene.add(new THREE.AmbientLight(0xb3b7c8,.7));
-  const key=new THREE.DirectionalLight(0xf1f3ff,6.0);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:2048,mobile?768:2048);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=3;scene.add(key,key.target);
+  scene.environment=environment.texture;scene.environmentRotation.y=.65;scene.environmentIntensity=0.9;pmrem.dispose();
+  scene.add(new THREE.AmbientLight(0xb3b7c8,.25));
+  const key=new THREE.DirectionalLight(0xf1f3ff,4.0);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:2048,mobile?768:2048);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=3;scene.add(key,key.target);
   const fill=new THREE.DirectionalLight(0xc2c8dc,.42);fill.position.set(3,1,1);scene.add(fill);
-  const rim=new THREE.DirectionalLight(0xff283a,4.0);rim.position.set(-2,1.3,-2);scene.add(rim);
+  const rim=new THREE.DirectionalLight(0xff283a,3.0);rim.position.set(-2,1.3,-2);scene.add(rim);
   const accent=new THREE.PointLight(0xff1c27,.6,5,2);accent.position.set(.5,.6,-.7);scene.add(accent);
   const particles=createParticles(mobile);scene.add(particles);
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let robotAsset;
-  try{robotAsset=await loader.loadAsync('/assets/robot-v3.glb')}
+  try{robotAsset=await loader.loadAsync('/assets/robot.glb?v=3')}
   catch(error){renderer.dispose();environment.dispose();throw error}
   const robot=new THREE.Group();robot.name='PRESENTATION_ROBOT_ROOT';robot.add(robotAsset.scene);scene.add(robot);
   const finishes=finishRobot(robot);
@@ -101,7 +101,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     for(const [material,original]of fieldMaterials){material.opacity=original.opacity*alpha;material.transparent=original.transparent||alpha<.999;material.depthWrite=alpha>.96?original.depthWrite:false;}
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
-    accent.intensity=.6*(1-alpha*.85);rim.intensity=lerp(4.5,.5,alpha);key.intensity=lerp(6.0,1.9,alpha);scene.environmentIntensity=lerp(1.1,1.3,alpha);
+    accent.intensity=.6*(1-alpha*.85);rim.intensity=lerp(3.0,.5,alpha);key.intensity=lerp(4.0,1.9,alpha);scene.environmentIntensity=lerp(0.9,1.0,alpha);
     const extent=lerp(.65,3,alpha);key.shadow.camera.left=-extent;key.shadow.camera.right=extent;key.shadow.camera.top=extent;key.shadow.camera.bottom=-extent;key.shadow.camera.updateProjectionMatrix();renderer.shadowMap.needsUpdate=true;
   }
   function render(now){

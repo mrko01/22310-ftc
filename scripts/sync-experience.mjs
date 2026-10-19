@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 // from this prototype once these reviewed inputs have been synced.
 const prototype = resolve(process.argv[2] || '../prototype');
 const source = ['main.js','scene.js','materials.js','interactions.js','timeline.mjs','style.css'];
-const assets = ['robot-v3.glb','field-compressed.glb','field-metadata.json','studio.hdr',
+const assets = ['robot.glb','field-compressed.glb','field-metadata.json','studio.hdr',
   'robot-poster.png','shooter-poster.png','field-poster.png','neuropol.otf',
   'interactions.css','subpages.css'];
 const manifest = {source:'Reviewed local robot/field experience',files:[]};
