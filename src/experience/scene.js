@@ -45,7 +45,7 @@ export async function createScene(canvas,{onReady,onFallback}){
   const particles=createParticles(mobile);scene.add(particles);
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let robotAsset;
-  try{robotAsset=await loader.loadAsync('/assets/robot.glb')}
+  try{robotAsset=await loader.loadAsync('/assets/robot.glb?v=2')}
   catch(error){renderer.dispose();environment.dispose();throw error}
   const robot=new THREE.Group();robot.name='PRESENTATION_ROBOT_ROOT';robot.add(robotAsset.scene);scene.add(robot);
   const finishes=finishRobot(robot);
