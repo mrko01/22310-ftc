@@ -25,25 +25,31 @@ function ensureUV(geometry){
   geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
 }
 export function finishRobot(robot){
-  const brushed=surfaceTexture('brushed'),composite=surfaceTexture('composite'),rubber=surfaceTexture('rubber'),materials=new Map();
+  const brushed=surfaceTexture('brushed'),composite=surfaceTexture('composite'),rubber=surfaceTexture('rubber'),finishes=new Map();
   robot.traverse(object=>{
     if(!object.isMesh)return;ensureUV(object.geometry);object.castShadow=true;object.receiveShadow=true;
-    const convert=original=>{
-      if(materials.has(original))return materials.get(original);
-      const name=original.name;let options;
-      if(/polycarbonate|clear|guard/i.test(name))options={color:0x8c9ba5,metalness:.05,roughness:.16,transparent:true,opacity:.23,depthWrite:false,side:THREE.DoubleSide,clearcoat:.5,clearcoatRoughness:.15};
-      else if(/rubber/i.test(name))options={color:0x101114,metalness:0,roughness:.82,roughnessMap:rubber,bumpMap:rubber,bumpScale:.00015};
-      else if(/composite/i.test(name))options={color:0x15171c,metalness:.16,roughness:.48,clearcoat:.12,clearcoatRoughness:.45,roughnessMap:composite,bumpMap:composite,bumpScale:.00013};
-      else if(/red_accent/i.test(name))options={color:0xa70b20,metalness:.42,roughness:.32,clearcoat:.24,clearcoatRoughness:.25,roughnessMap:rubber};
-      else if(/anodized/i.test(name))options={color:0x242933,metalness:.9,roughness:.29,roughnessMap:brushed,bumpMap:brushed,bumpScale:.000055};
-      else if(/ABS/i.test(name))options={color:0x333842,metalness:0,roughness:.5,roughnessMap:rubber,bumpMap:rubber,bumpScale:.00006,clearcoat:.1};
-      else if(/Opaque\((26|64),/i.test(name))options={color:/26,/.test(name)?0x171a20:0x343943,metalness:.6,roughness:.36,roughnessMap:brushed};
-      else options={color:/Hardware|Steel/i.test(name)?0x8a929c:0xadb4bf,metalness:.98,roughness:/Hardware/i.test(name)?.23:.32,roughnessMap:brushed,bumpMap:brushed,bumpScale:.000035};
-      const material=new THREE.MeshPhysicalMaterial({...options,envMapIntensity:1.0});material.name='VISUAL_FINISH_'+name;materials.set(original,material);return material;
+    const present=original=>{
+      if(finishes.has(original))return finishes.get(original);
+      // Source CAD base color, metalness and roughness stay authoritative. The
+      // finish pass adds surface response (maps, coat, env intensity) and swaps
+      // in a physical material so paint and metal read as materials, not plastic.
+      const name=original.name||'',material=new THREE.MeshPhysicalMaterial();
+      // MeshPhysicalMaterial.copy() trips on standard-only sources in r180;
+      // copy the shared standard properties through the prototype instead.
+      THREE.MeshStandardMaterial.prototype.copy.call(material,original);
+      if(/polycarbonate|clear|guard/i.test(name)){material.depthWrite=false;material.side=THREE.DoubleSide;material.clearcoat=.55;material.clearcoatRoughness=.12;material.envMapIntensity=1.35;material.forceSinglePass=true}
+      else if(/rubber/i.test(name)){material.roughnessMap=rubber;material.bumpMap=rubber;material.bumpScale=.00018;material.envMapIntensity=.85}
+      else if(/composite/i.test(name)){material.roughnessMap=composite;material.bumpMap=composite;material.bumpScale=.00015;material.clearcoat=.14;material.clearcoatRoughness=.5;material.envMapIntensity=.95}
+      else if(/ABS/i.test(name)){material.roughnessMap=composite;material.bumpMap=composite;material.bumpScale=.00012;material.clearcoat=.22;material.clearcoatRoughness=.4;material.envMapIntensity=1.0}
+      else if(/accent/i.test(name)){material.roughnessMap=brushed;material.bumpMap=brushed;material.bumpScale=.00005;material.clearcoat=.3;material.clearcoatRoughness=.28;material.envMapIntensity=1.2}
+      else if(/wire|cable/i.test(name)){material.envMapIntensity=.7}
+      else if(/anodized|aluminum|steel|hardware|satin|^Opaque|connector|housing/i.test(name)){material.roughnessMap=brushed;material.bumpMap=brushed;material.bumpScale=.00005;material.clearcoat=.12;material.clearcoatRoughness=.4;material.envMapIntensity=1.3}
+      else{material.roughnessMap=brushed;material.envMapIntensity=1.1}
+      material.needsUpdate=true;finishes.set(original,material);return material;
     };
-    object.material=Array.isArray(object.material)?object.material.map(convert):convert(object.material);
+    object.material=Array.isArray(object.material)?object.material.map(present):present(object.material);
   });
-  return {materials:[...materials.values()],textures:[brushed,composite,rubber]};
+  return {materials:[...finishes.values()],textures:[brushed,composite,rubber]};
 }
 
 // Source CAD colors and placements remain authoritative. These small shared
