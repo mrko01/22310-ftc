@@ -266,6 +266,16 @@ def main():
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     scene.export(args.out)
+    # trimesh only keeps one mesh per named node, so the rest are orphaned and
+    # a later optimisation pass would prune them. Rebuild the tree first.
+    import subprocess
+
+    fixed = args.out + ".fixed.glb"
+    subprocess.run(
+        [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "fix_gltf_hierarchy.py"), args.out, fixed],
+        check=True,
+    )
+    os.replace(fixed, args.out)
     print(
         json.dumps(
             {
