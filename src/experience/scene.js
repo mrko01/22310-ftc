@@ -49,6 +49,7 @@ export async function createScene(canvas,{onReady,onFallback}){
   catch(error){renderer.dispose();environment.dispose();throw error}
   const robot=new THREE.Group();robot.name='PRESENTATION_ROBOT_ROOT';robot.add(robotAsset.scene);scene.add(robot);
   const finishes=finishRobot(robot);
+  let fieldLoaded=false;
   const field=new THREE.Group();field.name='OFFICIAL_FIRST_BIOBUZZ_FIELD';scene.add(field);
   const fieldMaterials=new Map();
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.ShadowMaterial({opacity:.55}));ground.rotation.x=-Math.PI/2;ground.position.y=-.003;ground.receiveShadow=true;scene.add(ground);
@@ -99,6 +100,9 @@ export async function createScene(canvas,{onReady,onFallback}){
     // Preserve the transparent crossfade, then restore opaque depth sorting.
     // Leaving every CAD surface transparent defeats early depth rejection.
     for(const [material,original]of fieldMaterials){material.opacity=original.opacity*alpha;material.transparent=original.transparent||alpha<.999;material.depthWrite=alpha>.96?original.depthWrite:false;}
+    // The field is a large asset, so it is fetched only when the timeline is
+    // about to show it instead of at first paint.
+    if(!fieldLoaded&&alpha>.02)loadField();
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
     accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
@@ -115,7 +119,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     progress=lerp(progress,targetProgress,1-Math.exp(-elapsed*10));if(Math.abs(targetProgress-progress)<.00005)progress=targetProgress;
     applyFrame();interactions.update(delta,{progress});renderer.render(scene,camera);
     const qa=window.__SAFFRON_QA__;qa.frames++;qa.state='webgl';qa.triangles=renderer.info.render.triangles;qa.drawCalls=renderer.info.render.calls;qa.camera=camera.position.toArray();qa.robotPosition=robot.position.toArray();qa.sceneProgress=progress;qa.ambientTime=time;qa.pixelRatio=renderer.getPixelRatio();qa.webglVersion=gl.getParameter(gl.VERSION);qa.heroFraming=framing;
-    if(!ready&&renderer.info.render.triangles>0){ready=true;onReady();loadField()}
+    if(!ready&&renderer.info.render.triangles>0){ready=true;onReady()}
   }
   function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<701?1.5:1.75));renderer.setSize(innerWidth,innerHeight,false);dirty=true;framingDirty=true}
   function visibility(){visible=!document.hidden;last=performance.now()}
