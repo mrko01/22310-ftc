@@ -1,20 +1,33 @@
 #!/usr/bin/env python3
-"""Repair the glTF node hierarchy of a model exported by trimesh.
+"""Group the robot model under named assembly nodes.
 
-trimesh writes one node per assembly but keeps only a single mesh on it, so
-every other mesh ends up on a node that no parent points at. A glTF optimiser
-then prunes those unreferenced meshes and the model silently loses most of its
-parts. This re-homes every unreachable mesh node under the assembly node that
-owns it, and leaves an already correct tree untouched.
+The model is exported as one mesh per assembly and colour, all already placed
+in world space. The site animates named assemblies (the shooter, the intake,
+the indexer, the chassis and the drivetrain), so this rebuilds the node tree
+as:
+
+    world
+      SOURCE_SHOOTER
+        <the colour meshes of the shooter>
+      INFERRED_CHASSIS
+        ...
+
+Every node keeps an identity transform, so the parts keep the world position
+they were built with.
 """
 
 import argparse
 import json
-import re
 import struct
 import sys
 
-MESH_NAME = re.compile(r"^(.*)_[0-9a-fA-F]{6}$")
+ASSEMBLIES = (
+    "SOURCE_SHOOTER",
+    "INFERRED_INTAKE",
+    "INFERRED_INDEXER",
+    "INFERRED_CHASSIS",
+    "INFERRED_DRIVETRAIN",
+)
 
 
 def read_glb(path):
@@ -39,70 +52,93 @@ def write_glb(path, document, binary):
         padded = binary + b"\x00" * ((4 - len(binary) % 4) % 4)
         chunks.append(struct.pack("<II", len(padded), 0x004E4942) + padded)
     with open(path, "wb") as handle:
-        handle.write(struct.pack("<III", 0x46546C67, 2, 12 + sum(len(c) for c in chunks)))
+        handle.write(struct.pack("<III", 0x46546C67, 2, 12 + sum(len(chunk) for chunk in chunks)))
         for chunk in chunks:
             handle.write(chunk)
 
 
+def assembly_of(name):
+    for assembly in ASSEMBLIES:
+        if (name or "").startswith(assembly):
+            return assembly
+    return None
+
+
 def repair(path, out_path):
     document, binary = read_glb(path)
-    nodes = document.get("nodes", [])
-    scenes = document.get("scenes", [])
-    if not nodes or not scenes:
-        print(f"{path}: nothing to repair")
-        return 0
+    nodes = list(document.get("nodes", []))
+    meshes = document.get("meshes", [])
 
-    # Nodes reachable from the scene roots are the ones the renderer sees.
-    reachable = set()
-    stack = list(scenes[0].get("nodes", []) or [])
-    while stack:
-        index = stack.pop()
-        if index in reachable or index >= len(nodes):
-            continue
-        reachable.add(index)
-        stack.extend(nodes[index].get("children", []) or [])
-
-    unreachable = [index for index in range(len(nodes)) if index not in reachable]
-    if not unreachable:
-        print(f"{path}: hierarchy already complete ({len(nodes)} nodes)")
-        if out_path != path:
-            with open(path, "rb") as src, open(out_path, "wb") as dst:
-                dst.write(src.read())
-        return 0
-
-    # Assembly nodes are the named groups that already own a mesh.
-    assemblies = {}
+    # Parts are the nodes that belong to an assembly but are not one.
+    parts = {assembly: [] for assembly in ASSEMBLIES}
     for index, node in enumerate(nodes):
         name = node.get("name") or ""
-        if index in reachable and node.get("mesh") is not None and not name.startswith("mesh_"):
-            assemblies[name] = index
+        assembly = assembly_of(name)
+        if assembly and name != assembly:
+            parts[assembly].append(index)
 
-    def assembly_for(node_name):
-        match = MESH_NAME.match(node_name or "")
-        if match and match.group(1) in assemblies:
-            return assemblies[match.group(1)]
-        for name, index in assemblies.items():
-            if (node_name or "").startswith(name):
-                return index
-        return None
-
-    moved = 0
-    for index in unreachable:
-        node = nodes[index]
-        if node.get("mesh") is None:
+    # A mesh that no node points at is never drawn, so it needs a node.
+    used = {node.get("mesh") for node in nodes if node.get("mesh") is not None}
+    for mesh_index in range(len(meshes)):
+        if mesh_index in used:
             continue
-        target = assembly_for(node.get("name"))
-        if target is None:
-            continue
-        holder = nodes[target]
-        holder["children"] = list(holder.get("children", []) or []) + [index]
-        moved += 1
+        mesh = meshes[mesh_index]
+        name = mesh.get("name") or f"mesh_{mesh_index}"
+        nodes.append({
+            "name": name,
+            "mesh": mesh_index,
+            "translation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+        })
+        assembly = assembly_of(name)
+        if assembly:
+            parts[assembly].append(len(nodes) - 1)
 
-    if moved:
-        document["nodes"] = nodes
+    # Build the new tree: root, the assembly parents, then the parts. The
+    # indices are laid out up front so every child list stays valid.
+    layout = [{"name": "world", "children": [], "mesh": None, "source": None,
+               "transform": {}}]  # the root
+    for assembly in ASSEMBLIES:
+        layout.append({"name": assembly, "children": [], "mesh": None, "source": None,
+                       "transform": {}})
+    for assembly in ASSEMBLIES:
+        for index in parts[assembly]:
+            source = nodes[index]
+            layout.append({"name": source.get("name"), "children": None,
+                           "mesh": source.get("mesh"), "source": index,
+                           "transform": {key: source[key] for key in
+                                         ("translation", "rotation", "scale", "matrix")
+                                         if key in source}})
+
+    root_index = 0
+    for offset, assembly in enumerate(ASSEMBLIES):
+        parent_index = 1 + offset
+        layout[parent_index]["children"] = [
+            index for index in range(1 + len(ASSEMBLIES), len(layout))
+            if layout[index]["name"] and assembly_of(layout[index]["name"]) == assembly
+        ]
+    layout[root_index]["children"] = [1 + offset for offset in range(len(ASSEMBLIES))]
+
+    new_nodes = []
+    for entry in layout:
+        node = {"name": entry["name"]}
+        if entry["mesh"] is not None:
+            node["mesh"] = entry["mesh"]
+        # Keep the node transform: it carries the dequantisation scale that
+        # KHR_mesh_quantization puts on the node, and dropping it blows the
+        # model up to the full integer range.
+        for key, value in (entry.get("transform") or {}).items():
+            node[key] = value
+        if entry["children"]:
+            node["children"] = entry["children"]
+        new_nodes.append(node)
+
+    document["nodes"] = new_nodes
+    document["scenes"] = [{"name": "Scene", "nodes": [root_index]}]
     write_glb(out_path, document, binary)
-    print(f"{path}: re-homed {moved} unreachable mesh nodes under their assembly")
-    return moved
+
+    total = sum(len(parts[assembly]) for assembly in ASSEMBLIES)
+    print(f"{path}: grouped {total} part nodes under {len(ASSEMBLIES)} assemblies")
 
 
 def main():

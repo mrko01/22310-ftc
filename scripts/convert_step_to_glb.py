@@ -258,10 +258,13 @@ def main():
                     doubleSided=True,
                 )
             )
+            # A unique node per colour mesh keeps every part in world space
+            # with an identity transform; the assembly grouping is applied
+            # afterwards by scripts/fix_gltf_hierarchy.py.
             scene.add_geometry(
                 mesh,
                 geom_name=f"{assembly}_{colour[0]:02x}{colour[1]:02x}{colour[2]:02x}",
-                node_name=assembly,
+                node_name=f"{assembly}_{colour[0]:02x}{colour[1]:02x}{colour[2]:02x}",
             )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
