@@ -30,10 +30,10 @@ function ensureUV(geometry){
 // The CAD exports neutral greys, so the palette is rebuilt from the colour
 // itself. The team colour is saffron red: it lands on the saturated warm
 // parts (motors, hubs, belt hardware) while the structure stays metal.
-const TEAM_RED=0xc41230;
+const TEAM_RED=0xa8122c;
 const DEEP_RED=0x8f1226;
-const ANODISED=0x272b31;
-const GRAPHITE=0x1b1e23;
+const ANODISED=0x3c434c;
+const GRAPHITE=0x2b3037;
 const ALUMINIUM=0x8d949d;
 const STEEL=0x767e87;
 const BRONZE=0x8a6a3c;
@@ -46,9 +46,13 @@ function palette(name, colour){
   const [r,g,b]=colour,max=Math.max(r,g,b),min=Math.min(r,g,b);
   const saturation=max?(max-min)/max:0;
   const warm=r>=g&&g>=b,cool=b>r;
-  if(saturation>0.35&&warm){
-    // Saturated warm parts are the team colour.
-    return {color:TEAM_RED,metalness:.45,roughness:.3,kind:'paint'};
+  if(saturation>0.55&&warm){
+    // The strongest saffron accents carry the team colour.
+    return {color:TEAM_RED,metalness:.35,roughness:.32,kind:'paint'};
+  }
+  if(saturation>0.3&&warm){
+    // Warmer hardware stays metal so the robot is not uniformly red.
+    return {color:BRONZE,metalness:.88,roughness:.4,kind:'metal'};
   }
   if(saturation>0.3&&cool){
     return {color:DEEP_BLUE,metalness:.6,roughness:.28,kind:'paint'};

@@ -21,9 +21,9 @@ export function chapterOpacity(chapter,progress){return (chapter.start===0?1:bet
 export const desktopFrames=[
   {at:0,camera:[.85,.59,1.39],target:[0,.2,0],robot:[0,0,0],rotation:-.12,explode:0,field:0},
   {at:.14,camera:[.85,.64,1.36],target:[0,.23,0],robot:[0,0,0],rotation:.14,explode:0,field:0},
-  {at:.28,camera:[.83,.61,1.45],target:[0,.25,0],robot:[.24,0,0],rotation:.2,explode:1,field:0},
-  {at:.43,camera:[.62,.53,1.17],target:[0,.3,0],robot:[-.20,.015,0],rotation:-.4,explode:.42,field:0},
-  {at:.50,camera:[.82,.85,1.9],target:[0,.23,0],robot:[-.08,0,0],rotation:-.3,explode:0,field:0},
+  {at:.28,camera:[.95,.72,1.62],target:[.08,.22,0],robot:[.16,0,0],rotation:.2,explode:1,field:0},
+  {at:.43,camera:[.74,.62,1.36],target:[-.04,.26,0],robot:[-.14,.012,0],rotation:-.4,explode:.42,field:0},
+  {at:.50,camera:[.88,.82,1.82],target:[0,.20,0],robot:[-.08,0,0],rotation:-.3,explode:0,field:0},
   {at:.62,camera:[5.6,4.7,6.5],target:[-.44,.28,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
   {at:.77,camera:[5.4,4.7,6.7],target:[-.50,.3,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
   {at:.88,camera:[3.9,4.2,6.8],target:[-.1,.25,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},

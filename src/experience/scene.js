@@ -29,19 +29,19 @@ export async function createScene(canvas,{onReady,onFallback}){
   const mobile=innerWidth<701;
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
   renderer.setClearColor(0x0a0b0e,1);renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:1.75));
-  renderer.setSize(innerWidth,innerHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.92;
+  renderer.setSize(innerWidth,innerHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
   const gl=renderer.getContext();if(gl.isContextLost())throw new Error('WebGL context unavailable');
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(31,innerWidth/innerHeight,.02,80);
   const pmrem=new THREE.PMREMGenerator(renderer);let environment;
   try{const hdr=await new RGBELoader().loadAsync('/assets/studio.hdr');environment=pmrem.fromEquirectangular(hdr);hdr.dispose()}
   catch{const room=new RoomEnvironment();environment=pmrem.fromScene(room,.05);room.dispose()}
-  scene.environment=environment.texture;scene.environmentRotation.y=.65;scene.environmentIntensity=0.62;pmrem.dispose();
+  scene.environment=environment.texture;scene.environmentRotation.y=.65;scene.environmentIntensity=0.95;pmrem.dispose();
   scene.add(new THREE.AmbientLight(0x8f98ac,.28));
-  const key=new THREE.DirectionalLight(0xf6f8ff,3.7);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:2048,mobile?768:2048);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=4;scene.add(key,key.target);
+  const key=new THREE.DirectionalLight(0xf6f8ff,4.2);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:2048,mobile?768:2048);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=4;scene.add(key,key.target);
   const fill=new THREE.DirectionalLight(0xc9d6ff,.55);fill.position.set(3,1,1);scene.add(fill);
-  const rim=new THREE.DirectionalLight(0xff2b3d,1.5);rim.position.set(-2,1.3,-2);scene.add(rim);
-  const accent=new THREE.PointLight(0xff3344,.45,5,2);accent.position.set(.5,.6,-.7);scene.add(accent);
+  const rim=new THREE.DirectionalLight(0xff3b4a,1.15);rim.position.set(-2,1.3,-2);scene.add(rim);
+  const accent=new THREE.PointLight(0xff5566,.35,5,2);accent.position.set(.5,.6,-.7);scene.add(accent);
   const particles=createParticles(mobile);scene.add(particles);
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let robotAsset;
@@ -83,10 +83,10 @@ export async function createScene(canvas,{onReady,onFallback}){
     robot.rotation.y=frame.rotation+ambientSweep;
     assemblies.forEach(({object,origin})=>{
       object.position.copy(origin);
-      if(object.name==='SOURCE_SHOOTER')object.position.y+=frame.explode*.17;
-      if(object.name==='INFERRED_INTAKE'){object.position.y+=frame.explode*.075;object.position.z+=frame.explode*.085}
-      if(object.name==='INFERRED_CHASSIS')object.position.y+=frame.explode*.035;
-      if(object.name==='INFERRED_INDEXER'){object.position.y+=frame.explode*.095;object.position.z-=frame.explode*.04}
+      if(object.name==='SOURCE_SHOOTER')object.position.y+=frame.explode*.085;
+      if(object.name==='INFERRED_INTAKE'){object.position.y+=frame.explode*.04;object.position.z+=frame.explode*.055}
+      if(object.name==='INFERRED_CHASSIS')object.position.y+=frame.explode*.018;
+      if(object.name==='INFERRED_INDEXER'){object.position.y+=frame.explode*.05;object.position.z-=frame.explode*.028}
     });
     if(framingDirty&&progress<.001){
       robot.updateWorldMatrix(true,true);camera.updateMatrixWorld();
@@ -101,7 +101,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     for(const [material,original]of fieldMaterials){material.opacity=original.opacity*alpha;material.transparent=original.transparent||alpha<.999;material.depthWrite=alpha>.96?original.depthWrite:false;}
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
-    accent.intensity=.45*(1-alpha*.85);rim.intensity=lerp(1.5,.4,alpha);key.intensity=lerp(3.7,1.7,alpha);scene.environmentIntensity=lerp(0.62,0.9,alpha);
+    accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
     const extent=lerp(.95,3.4,alpha);key.shadow.camera.left=-extent;key.shadow.camera.right=extent;key.shadow.camera.top=extent;key.shadow.camera.bottom=-extent;key.shadow.camera.updateProjectionMatrix();renderer.shadowMap.needsUpdate=true;
   }
   function render(now){
