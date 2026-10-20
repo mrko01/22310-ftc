@@ -31,7 +31,7 @@ function ensureUV(geometry){
 // itself. The team colour is saffron red: it lands on the saturated warm
 // parts (motors, hubs, belt hardware) while the structure stays metal.
 const TEAM_RED=0xa8122c;
-const DEEP_RED=0x8f1226;
+const DEEP_RED=0x7d0f20;
 const ANODISED=0x3c434c;
 const GRAPHITE=0x2b3037;
 const ALUMINIUM=0x8d949d;
@@ -46,6 +46,13 @@ function palette(name, colour){
   const [r,g,b]=colour,max=Math.max(r,g,b),min=Math.min(r,g,b);
   const saturation=max?(max-min)/max:0;
   const warm=r>=g&&g>=b,cool=b>r;
+  // The ramp is a single plate that the team colour would flatten, so it gets
+  // a deeper red than the rest of the machine.
+  if(/ramp/i.test(name))return {color:DEEP_RED,metalness:.42,roughness:.34,kind:'paint'};
+  // Yellow is the old team colour: it is red now, everywhere it appears.
+  if(r>140&&g>95&&b<130&&r-b>60&&g-b>20){
+    return {color:TEAM_RED,metalness:.35,roughness:.32,kind:'paint'};
+  }
   if(saturation>0.55&&warm){
     // The strongest saffron accents carry the team colour.
     return {color:TEAM_RED,metalness:.35,roughness:.32,kind:'paint'};
@@ -80,8 +87,11 @@ export function finishRobot(robot){
   const brushed=surfaceTexture('brushed'),composite=surfaceTexture('composite'),rubber=surfaceTexture('rubber'),plastic=surfaceTexture('plastic'),machined=surfaceTexture('machined'),finishes=new Map();
   robot.traverse(object=>{
     if(!object.isMesh)return;ensureUV(object.geometry);object.castShadow=true;object.receiveShadow=true;
-    const present=original=>{
-      if(finishes.has(original))return finishes.get(original);
+    const present=(original,meshName)=>{
+      // The finish is keyed by the mesh as well as the material, because the
+      // same CAD colour is used by parts that are finished differently.
+      const finishKey=`${original.uuid}|${meshName||''}`;
+      if(finishes.has(finishKey))return finishes.get(finishKey);
       // The CAD base colour is authoritative for the palette decision, but the
       // finish pass decides the surface response so the robot reads as metal
       // and painted parts rather than flat plastic.
@@ -91,10 +101,13 @@ export function finishRobot(robot){
       THREE.MeshStandardMaterial.prototype.copy.call(material,original);
       const opaque=/^Opaque\((\d+),(\d+),(\d+)\)/i.exec(name);
       const cad=opaque?[+opaque[1],+opaque[2],+opaque[3]]:null;
-      const look=palette(name,cad);
+      const look=palette(`${name} ${meshName||''}`,cad);
       material.color=new THREE.Color(look.color);
       material.metalness=look.metalness;
       material.roughness=look.roughness;
+      // Sheet metal panels in the CAD are open surfaces, so the model has to
+      // be drawn from both sides or the plates disappear.
+      material.side=THREE.DoubleSide;
       if(/polycarbonate|clear|guard/i.test(name)||look.kind==='clear'){
         material.depthWrite=false;material.side=THREE.DoubleSide;material.clearcoat=.6;material.clearcoatRoughness=.08;material.envMapIntensity=1.1;material.forceSinglePass=true;material.transparent=true;material.opacity=.55;
       }
@@ -116,9 +129,9 @@ export function finishRobot(robot){
       else{
         material.roughnessMap=brushed;material.bumpMap=brushed;material.bumpScale=.00005;material.clearcoat=.14;material.clearcoatRoughness=.4;material.envMapIntensity=.95;
       }
-      material.needsUpdate=true;finishes.set(original,material);return material;
+      material.needsUpdate=true;finishes.set(finishKey,material);return material;
     };
-    object.material=Array.isArray(object.material)?object.material.map(present):present(object.material);
+    object.material=Array.isArray(object.material)?object.material.map(material=>present(material,object.name)):present(object.material,object.name);
   });
   return {materials:[...finishes.values()],textures:[brushed,composite,rubber,plastic,machined]};
 }

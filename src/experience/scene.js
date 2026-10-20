@@ -28,7 +28,7 @@ function createParticles(mobile){
 export async function createScene(canvas,{onReady,onFallback}){
   const mobile=innerWidth<701;
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
-  renderer.setClearColor(0x0a0b0e,1);renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:1.75));
+  renderer.setClearColor(0x0a0b0e,1);renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.25:1.5));
   renderer.setSize(innerWidth,innerHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
   const gl=renderer.getContext();if(gl.isContextLost())throw new Error('WebGL context unavailable');
@@ -38,7 +38,7 @@ export async function createScene(canvas,{onReady,onFallback}){
   catch{const room=new RoomEnvironment();environment=pmrem.fromScene(room,.05);room.dispose()}
   scene.environment=environment.texture;scene.environmentRotation.y=.65;scene.environmentIntensity=0.95;pmrem.dispose();
   scene.add(new THREE.AmbientLight(0x8f98ac,.28));
-  const key=new THREE.DirectionalLight(0xf6f8ff,4.2);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:2048,mobile?768:2048);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=4;scene.add(key,key.target);
+  const key=new THREE.DirectionalLight(0xf6f8ff,4.2);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:1024,mobile?768:1024);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=4;scene.add(key,key.target);
   const fill=new THREE.DirectionalLight(0xc9d6ff,.55);fill.position.set(3,1,1);scene.add(fill);
   const rim=new THREE.DirectionalLight(0xff3b4a,1.15);rim.position.set(-2,1.3,-2);scene.add(rim);
   const accent=new THREE.PointLight(0xff5566,.35,5,2);accent.position.set(.5,.6,-.7);scene.add(accent);
@@ -56,14 +56,100 @@ export async function createScene(canvas,{onReady,onFallback}){
   const assemblies=[];
   robot.traverse(object=>{if(['SOURCE_SHOOTER','INFERRED_CHASSIS','INFERRED_INTAKE','INFERRED_INDEXER','INFERRED_DRIVETRAIN'].includes(object.name))assemblies.push({object,origin:object.position.clone()})});
   const robotBounds=new THREE.Box3().setFromObject(robot);
+  window.__SAFFRON_QA__.scene=scene;
   window.__SAFFRON_QA__.robotLoaded=true;window.__SAFFRON_QA__.assemblies=assemblies.map(a=>a.object.name);window.__SAFFRON_QA__.robotBounds=robotBounds.getSize(new THREE.Vector3()).toArray();window.__SAFFRON_QA__.materialCount=finishes.materials.length;
-  let targetProgress=0,progress=0,paused=false,disposed=false,animation=0,last=performance.now(),time=0,ready=false,visible=!document.hidden,dirty=true,motionUntil=performance.now()+4000;
+  let targetProgress=0,progress=0,paused=false,disposed=false,animation=0,last=performance.now(),time=0,ready=false,visible=!document.hidden,dirty=true,motionUntil=performance.now()+4000,shadowExtent=-1;
   const interactions=createInteractions({canvas,camera,scene,robot,assemblies,invalidate(){dirty=true}});
   let framing={x:0,y:0},framingDirty=true;
+  // The field repeats the same geometry many times, and the loader keeps a
+  // separate copy of every repeat. Drawing them one by one costs thousands of
+  // draw calls and millions of triangles, so the repeats are merged into one
+  // instanced mesh per geometry. The hives and the starting pieces stay
+  // separate because the play moves them.
+  function instanceStaticField(root, metadata) {
+    const moving=new Set();
+    for(const hive of metadata?.hives??[])moving.add(hive.name);
+    const groups=new Map();
+    const collect=[];
+    root.traverse(object=>{
+      if(!(object.isMesh||object.isInstancedMesh)||!object.geometry)return;
+      if(moving.has(object.name))return;
+      // Only the pieces the play moves are left alone: the direct children of
+      // the starting group.
+      if(object.parent?.name===metadata?.startingPiecesGroup)return;
+      // The loader gives every copy of a repeated piece its own geometry,
+      // material and node name, so the copies are matched by the shape of
+      // their vertices instead. A repeated field element always has the same
+      // geometry and the same colour, so the first copy stands for the group.
+      const position=object.geometry.attributes?.position;
+      let fingerprint=String(position?.count??0);
+      if(position){
+        for(let index=0;index<Math.min(16,position.count);index++){
+          fingerprint+=`:${position.getX(index).toFixed(5)}`;
+        }
+      }
+      const key=fingerprint;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(object);
+    });
+    const matrix=new THREE.Matrix4();
+    const local=new THREE.Matrix4();
+    let merged=0,mergedInstances=0;
+    for(const members of groups.values()){
+      if(members.length<2)continue;
+      const first=members[0];
+      // A copy that sits at the top of the field has no parent of its own,
+      // so the merged mesh is attached to the field root.
+      const parent=first.parent??root;
+      let total=0;
+      for(const member of members)total+=member.isInstancedMesh?member.count:1;
+      const instanced=new THREE.InstancedMesh(first.geometry,first.material,total);
+      instanced.name=first.name||'field-instance';
+      instanced.castShadow=first.castShadow;
+      instanced.receiveShadow=first.receiveShadow;
+      instanced.frustumCulled=first.frustumCulled;
+      let index=0;
+      for(const member of members){
+        member.updateWorldMatrix(true,false);
+        if(member.isInstancedMesh){
+          for(let slot=0;slot<member.count;slot++){
+            member.getMatrixAt(slot,local);
+            matrix.multiplyMatrices(member.matrixWorld,local);
+            instanced.setMatrixAt(index++,matrix);
+          }
+        }else{
+          matrix.copy(member.matrixWorld);
+          instanced.setMatrixAt(index++,matrix);
+        }
+        member.removeFromParent();
+      }
+      instanced.instanceMatrix.needsUpdate=true;
+      parent.add(instanced);
+      merged+=1;
+      mergedInstances+=total;
+    }
+    window.__SAFFRON_QA__.fieldMerge={groups:groups.size,sizes:[...groups.values()].map(v=>v.length).sort((a,b)=>b-a).slice(0,6),merged,instances:mergedInstances};
+  }
+
   async function loadField(){try{
     const [asset,metadata]=await Promise.all([loader.loadAsync('/assets/field-compressed.glb'),fetch('/assets/field-metadata.json').then(response=>response.json())]);if(disposed)return;field.add(asset.scene);
+    instanceStaticField(asset.scene,metadata);
     finishes.textures.push(...finishField(field).textures);
-    field.traverse(object=>{if(object.isMesh){object.receiveShadow=true;object.castShadow=!/FOAM|CLEAR|GLASS/i.test(object.material?.name||'');for(const mat of Array.isArray(object.material)?object.material:[object.material]){if(!fieldMaterials.has(mat)){fieldMaterials.set(mat,{opacity:mat.opacity,transparent:mat.transparent,depthWrite:mat.depthWrite});mat.forceSinglePass=true;mat.transparent=true}}}});
+    field.traverse(object=>{
+      if(!object.isMesh)return;
+      object.receiveShadow=true;
+      object.castShadow=!/FOAM|CLEAR|GLASS/i.test(object.material?.name||'');
+      const materials=Array.isArray(object.material)?object.material:[object.material];
+      for(const mat of materials){
+        if(fieldMaterials.has(mat))continue;
+        // Only the surfaces that are really see through stay transparent: a
+        // transparent field cannot be depth rejected and costs a lot of fill.
+        const seeThrough=/CLEAR|GLASS|TRANSPARENT/i.test(mat.name||'');
+        fieldMaterials.set(mat,{opacity:mat.opacity,transparent:mat.transparent,depthWrite:mat.depthWrite,seeThrough});
+        mat.forceSinglePass=true;
+        if(!seeThrough){mat.transparent=false;mat.depthWrite=true;mat.opacity=1;}
+      }
+    });
     interactions.setField(field,metadata);
     window.__SAFFRON_QA__.fieldBounds=new THREE.Box3().setFromObject(field).getSize(new THREE.Vector3()).toArray();window.__SAFFRON_QA__.fieldLoaded=true;dirty=true;
   }catch(error){if(disposed)return;window.__SAFFRON_QA__.errors.push('Field: '+String(error));console.warn('Field unavailable',error);onFallback()}}
@@ -98,15 +184,24 @@ export async function createScene(canvas,{onReady,onFallback}){
     const framingWeight=1-between(progress,.12,.24);if(framingWeight>0)camera.setViewOffset(innerWidth,innerHeight,framing.x*framingWeight,framing.y*framingWeight,innerWidth,innerHeight);
     const alpha=frame.field;field.visible=alpha>.002;
     // Preserve the transparent crossfade, then restore opaque depth sorting.
-    // Leaving every CAD surface transparent defeats early depth rejection.
-    for(const [material,original]of fieldMaterials){material.opacity=original.opacity*alpha;material.transparent=original.transparent||alpha<.999;material.depthWrite=alpha>.96?original.depthWrite:false;}
+    // Leaving every CAD surface transparent defeats early depth rejection, so
+    // only the surfaces that are really see through stay transparent.
+    for(const [material,original]of fieldMaterials){
+      if(original.seeThrough){material.opacity=original.opacity*alpha;material.transparent=true;material.depthWrite=false;}
+      else{material.transparent=alpha<.999&&alpha>0;material.opacity=1;material.depthWrite=alpha>.9;}
+    }
     // The field is a large asset, so it is fetched only when the timeline is
     // about to show it instead of at first paint.
     if(!fieldLoaded&&alpha>.02)loadField();
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
     accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
-    const extent=lerp(.95,3.4,alpha);key.shadow.camera.left=-extent;key.shadow.camera.right=extent;key.shadow.camera.top=extent;key.shadow.camera.bottom=-extent;key.shadow.camera.updateProjectionMatrix();renderer.shadowMap.needsUpdate=true;
+    const extent=lerp(.95,3.4,alpha);
+    // The shadow map is only redrawn when the shadowed area actually moves.
+    // Asking for it every frame rebuilt the whole map sixty times a second.
+    if(Math.abs(extent-shadowExtent)>.004){
+      shadowExtent=extent;key.shadow.camera.left=-extent;key.shadow.camera.right=extent;key.shadow.camera.top=extent;key.shadow.camera.bottom=-extent;key.shadow.camera.updateProjectionMatrix();renderer.shadowMap.needsUpdate=true;
+    }
   }
   function render(now){
     if(disposed)return;animation=requestAnimationFrame(render);
@@ -121,7 +216,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     const qa=window.__SAFFRON_QA__;qa.frames++;qa.state='webgl';qa.triangles=renderer.info.render.triangles;qa.drawCalls=renderer.info.render.calls;qa.camera=camera.position.toArray();qa.robotPosition=robot.position.toArray();qa.sceneProgress=progress;qa.ambientTime=time;qa.pixelRatio=renderer.getPixelRatio();qa.webglVersion=gl.getParameter(gl.VERSION);qa.heroFraming=framing;
     if(!ready&&renderer.info.render.triangles>0){ready=true;onReady()}
   }
-  function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<701?1.5:1.75));renderer.setSize(innerWidth,innerHeight,false);dirty=true;framingDirty=true}
+  function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<701?1.25:1.5));renderer.setSize(innerWidth,innerHeight,false);dirty=true;framingDirty=true}
   function visibility(){visible=!document.hidden;last=performance.now()}
   function contextLost(event){event.preventDefault();cancelAnimationFrame(animation);onFallback()}
   function contextRestored(){if(!disposed){document.body.dataset.renderState='webgl';last=performance.now();animation=requestAnimationFrame(render)}}

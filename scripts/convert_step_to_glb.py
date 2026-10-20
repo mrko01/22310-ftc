@@ -22,13 +22,13 @@ from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.Quantity import Quantity_Color
 from OCP.STEPCAFControl import STEPCAFControl_Reader
 from OCP.TCollection import TCollection_ExtendedString
-from OCP.TDF import TDF_LabelSequence
+from OCP.TDF import TDF_Label, TDF_LabelSequence
 from OCP.TDocStd import TDocStd_Document
-from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_SOLID
+from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_SHELL, TopAbs_SOLID
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopLoc import TopLoc_Location
 from OCP.TopoDS import TopoDS
-from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool
+from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool, XCAFDoc_ShapeTool
 
 import trimesh
 
@@ -142,6 +142,32 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
     bodies = []
     histogram = {}
 
+    def resolve_shape(label, shape):
+        """Return a shape that carries geometry.
+
+        Some mirrored instances in the CAD are stored as references: the
+        instance itself has no geometry and points at a prototype elsewhere in
+        the document. Without resolving the reference those plates are simply
+        missing from the model.
+        """
+        if shape is None or shape.IsNull():
+            return None
+        explorer = TopExp_Explorer(shape, TopAbs_SOLID)
+        if explorer.More():
+            return shape
+        explorer = TopExp_Explorer(shape, TopAbs_FACE)
+        if explorer.More():
+            return shape
+        referred = TDF_Label()
+        try:
+            if XCAFDoc_ShapeTool.GetReferredShape_s(label, referred):
+                prototype = shape_tool.GetShape_s(referred)
+                if prototype is not None and not prototype.IsNull():
+                    return prototype.Moved(shape.Location())
+        except Exception:
+            pass
+        return shape
+
     def walk(label):
         components = TDF_LabelSequence()
         shape_tool.GetComponents_s(label, components)
@@ -150,8 +176,14 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                 shape = shape_tool.GetShape_s(label)
             except Exception:
                 return
+            shape = resolve_shape(label, shape)
             if shape is None or shape.IsNull():
                 return
+            # Solids first, then the open bodies that are not part of any
+            # solid. Sheet metal panels are often modelled as a shell or a
+            # single face, and walking solids alone leaves those plates out
+            # of the model.
+            solid_faces = []
             explorer = TopExp_Explorer(shape, TopAbs_SOLID)
             while explorer.More():
                 body = explorer.Current()
@@ -163,6 +195,42 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                 bodies.append((vertices, faces, colour))
                 if colour:
                     histogram[colour] = histogram.get(colour, 0) + len(faces)
+                face_explorer = TopExp_Explorer(body, TopAbs_FACE)
+                while face_explorer.More():
+                    solid_faces.append(face_explorer.Current())
+                    face_explorer.Next()
+
+            def is_solid_face(face):
+                return any(face.IsSame(other) for other in solid_faces)
+
+            shell_explorer = TopExp_Explorer(shape, TopAbs_SHELL)
+            while shell_explorer.More():
+                shell = shell_explorer.Current()
+                shell_faces = []
+                face_explorer = TopExp_Explorer(shell, TopAbs_FACE)
+                while face_explorer.More():
+                    shell_faces.append(face_explorer.Current())
+                    face_explorer.Next()
+                if shell_faces and not any(is_solid_face(face) for face in shell_faces):
+                    colour = colour_of(color_tool, shell) or colour_of(color_tool, shape)
+                    vertices, faces = tessellate(shell, deflection, relative)
+                    if len(faces) >= min_faces:
+                        bodies.append((vertices, faces, colour))
+                        if colour:
+                            histogram[colour] = histogram.get(colour, 0) + len(faces)
+                shell_explorer.Next()
+
+            face_explorer = TopExp_Explorer(shape, TopAbs_FACE)
+            while face_explorer.More():
+                face = face_explorer.Current()
+                if not is_solid_face(face):
+                    colour = colour_of(color_tool, face) or colour_of(color_tool, shape)
+                    vertices, faces = tessellate(face, deflection, relative)
+                    if len(faces) >= min_faces:
+                        bodies.append((vertices, faces, colour))
+                        if colour:
+                            histogram[colour] = histogram.get(colour, 0) + len(faces)
+                face_explorer.Next()
             return
         for index in range(components.Length()):
             walk(components.Value(index + 1))
@@ -183,17 +251,19 @@ def name_index(step_path):
 
 
 def assign_assemblies(bodies, names, scale, bounds_top):
-    """Give every meshed body the assembly of the nearest named part."""
+    """Give every meshed body the assembly and part name of the nearest part."""
     if not names:
-        return [CHASSIS] * len(bodies)
+        return [CHASSIS] * len(bodies), [""] * len(bodies)
     points = np.array([centroid for _, centroid in names])
     assigned = []
+    part_names = []
     for vertices, _, _ in bodies:
         centre = np.mean(np.asarray(vertices) * scale, axis=0)
         distance = np.linalg.norm(points - centre, axis=1)
         index = int(np.argmin(distance))
         assigned.append(classify(names[index][0], float(centre[1]), bounds_top))
-    return assigned
+        part_names.append(names[index][0])
+    return assigned, part_names
 
 
 def main():
@@ -222,17 +292,21 @@ def main():
     print(f"bounds min {low.round(3).tolist()} max {high.round(3).tolist()}", flush=True)
 
     names = name_index(args.step)
-    assemblies = assign_assemblies(bodies, names, args.scale, bounds_top)
+    assemblies, part_names = assign_assemblies(bodies, names, args.scale, bounds_top)
     counts = {}
     for assembly in assemblies:
         counts[assembly] = counts.get(assembly, 0) + 1
     print("assemblies:", counts, flush=True)
 
     # Group by assembly and colour so the browser draws a handful of materials
-    # while the scene can still move each assembly on scroll.
+    # while the scene can still move each assembly on scroll. The ramp is kept
+    # in a bucket of its own so the site can give that plate its own colour.
     buckets = {}
-    for (vertices, faces, colour), assembly in zip(bodies, assemblies):
-        key = (assembly, colour or DEFAULT_COLOUR)
+    for (vertices, faces, colour), assembly, part_name in zip(bodies, assemblies, part_names):
+        tag = ""
+        if re.search(r"ramp", part_name or "", re.IGNORECASE):
+            tag = "RAMP_"
+        key = (assembly, tag, colour or DEFAULT_COLOUR)
         bucket = buckets.setdefault(key, ([], []))
         offset = len(bucket[0])
         bucket[0].extend((np.asarray(vertices) * args.scale))
@@ -240,7 +314,7 @@ def main():
 
     scene = trimesh.Scene()
     for assembly in ASSEMBLY_ORDER:
-        for (bucket_assembly, colour), (vertices, faces) in buckets.items():
+        for (bucket_assembly, tag, colour), (vertices, faces) in buckets.items():
             if bucket_assembly != assembly or not faces:
                 continue
             points = np.asarray(vertices)
@@ -261,10 +335,11 @@ def main():
             # A unique node per colour mesh keeps every part in world space
             # with an identity transform; the assembly grouping is applied
             # afterwards by scripts/fix_gltf_hierarchy.py.
+            label = f"{assembly}_{tag}{colour[0]:02x}{colour[1]:02x}{colour[2]:02x}"
             scene.add_geometry(
                 mesh,
-                geom_name=f"{assembly}_{colour[0]:02x}{colour[1]:02x}{colour[2]:02x}",
-                node_name=f"{assembly}_{colour[0]:02x}{colour[1]:02x}{colour[2]:02x}",
+                geom_name=label,
+                node_name=label,
             )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
