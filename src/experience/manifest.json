@@ -57,12 +57,12 @@
       "sha256": "e2a1c819b598d9661e4bb683ba6bb0c3ab4dcc292b016a8f209411c8a4fc56d8"
     },
     {
-      "path": "src/assets/shooter-poster.png",
+      "path": "src/assets/shooter-poster.webp",
       "bytes": 1112900,
       "sha256": "bde7519dc39eec03f085c009643d42a7e730467cba5c504dad83afae7a114c27"
     },
     {
-      "path": "src/assets/field-poster.png",
+      "path": "src/assets/field-poster.webp",
       "bytes": 1039950,
       "sha256": "adf1a05b2ad5fb32f6e03044dbc728852cff4a08405dd25f53845852a8b2327c"
     },

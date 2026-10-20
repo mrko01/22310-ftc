@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Convert a Fusion 360 STEP assembly into a coloured, web-sized GLB.
 
-The STEP is read with the XCAF reader so the assembly structure survives the
-conversion. Every solid body is meshed with OpenCASCADE and tagged with the
-COLOUR_RGB value Fusion 360 assigned to it, keeping the CAD colour name so the
-presentation pass can still tell aluminium from rubber. Bodies that share a
-colour are merged into one mesh so the browser draws a handful of materials
-instead of a thousand.
+The STEP is read with the XCAF reader so the assembly structure and the
+COLOUR_RGB values survive the conversion. Every solid body is meshed with
+OpenCASCADE, tagged with its CAD colour, and grouped into the named
+assemblies the site animates on scroll (shooter, intake, indexer, chassis,
+drivetrain). The finished model is centred on the origin with its wheels on
+the ground so it lines up with the field.
 """
 
 import argparse
@@ -32,39 +32,41 @@ from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool
 
 import trimesh
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import step_colors  # noqa: E402
-
 COLOUR_TYPES = (
     XCAFDoc_ColorType.XCAFDoc_ColorGen,
     XCAFDoc_ColorType.XCAFDoc_ColorSurf,
 )
 DEFAULT_COLOUR = (150, 150, 150)
 
+SHOOTER = "SOURCE_SHOOTER"
+INTAKE = "INFERRED_INTAKE"
+INDEXER = "INFERRED_INDEXER"
+CHASSIS = "INFERRED_CHASSIS"
+DRIVETRAIN = "INFERRED_DRIVETRAIN"
 
-def colour_names(step_path):
-    """Map an (r, g, b) triple to the CAD colour name used in the STEP."""
-    names = {}
-    path = step_path
-    entity = step_colors.ENTITY
-    buffer = ""
-    with open(path, "r", errors="ignore") as handle:
-        for line in handle:
-            buffer += line
-            if ";" not in buffer:
-                continue
-            pieces = buffer.split(";")
-            buffer = pieces.pop()
-            for chunk in pieces:
-                match = entity.match(chunk.strip())
-                if not match or match.group(2) != "COLOUR_RGB":
-                    continue
-                args = step_colors.split_args(match.group(3))
-                if len(args) < 4:
-                    continue
-                rgb = tuple(round(float(value) * 255) for value in args[1:4])
-                names.setdefault(rgb, step_colors.unquote(args[0]))
-    return names
+ASSEMBLY_ORDER = (SHOOTER, INTAKE, INDEXER, CHASSIS, DRIVETRAIN)
+
+DRIVE_WORDS = re.compile(
+    r"mecanum|wheel|tyre|tire|motor|gearbox|hex|shaft|bearing|encoder|"
+    r"bushing|pulley|belt|tensioner|spacer|chassis|plate|bracket|rail",
+    re.I,
+)
+
+
+def classify(name, centroid_y, bounds_top):
+    """Map a part to one of the assemblies the site animates."""
+    text = name or ""
+    if re.search(r"intake", text, re.I):
+        return INTAKE
+    if re.search(r"index", text, re.I):
+        return INDEXER
+    if centroid_y > bounds_top * 0.62 and not re.search(r"intake|index", text, re.I):
+        return SHOOTER
+    if re.search(r"mecanum|wheel", text, re.I):
+        return DRIVETRAIN
+    if centroid_y < 0.045 and DRIVE_WORDS.search(text):
+        return DRIVETRAIN
+    return CHASSIS
 
 
 def read_step(path):
@@ -102,9 +104,14 @@ def colour_of(color_tool, shape):
     return None
 
 
-def tessellate(shape, deflection):
-    """Mesh a shape and return (vertices, faces)."""
-    BRepMesh_IncrementalMesh(shape, deflection, False, 0.5, True)
+def tessellate(shape, deflection, relative=False):
+    """Mesh a shape and return (vertices, faces).
+
+    A relative deflection keeps small parts (screws, pulleys, hubs) detailed
+    while letting large flat panels use far fewer triangles, which is what
+    makes the model web sized without losing the small hardware.
+    """
+    BRepMesh_IncrementalMesh(shape, deflection, relative, 0.5, True)
     vertices = []
     faces = []
     explorer = TopExp_Explorer(shape, TopAbs_FACE)
@@ -127,12 +134,12 @@ def tessellate(shape, deflection):
     return vertices, faces
 
 
-def collect(shape_tool, color_tool, deflection, min_faces):
+def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
     """Walk the assembly tree and mesh every coloured solid body."""
     free_labels = TDF_LabelSequence()
     shape_tool.GetFreeShapes(free_labels)
 
-    parts = []
+    bodies = []
     histogram = {}
 
     def walk(label):
@@ -149,11 +156,11 @@ def collect(shape_tool, color_tool, deflection, min_faces):
             while explorer.More():
                 body = explorer.Current()
                 colour = colour_of(color_tool, body) or colour_of(color_tool, shape)
-                vertices, faces = tessellate(body, deflection)
+                vertices, faces = tessellate(body, deflection, relative)
                 explorer.Next()
                 if len(faces) < min_faces:
                     continue
-                parts.append((vertices, faces, colour))
+                bodies.append((vertices, faces, colour))
                 if colour:
                     histogram[colour] = histogram.get(colour, 0) + len(faces)
             return
@@ -162,67 +169,31 @@ def collect(shape_tool, color_tool, deflection, min_faces):
 
     for index in range(free_labels.Length()):
         walk(free_labels.Value(index + 1))
-    return parts, histogram
+    return bodies, histogram
 
 
-def merge_by_colour(parts):
-    """Merge bodies that share a colour into a single mesh per colour."""
-    buckets = {}
-    for vertices, faces, colour in parts:
-        key = colour or DEFAULT_COLOUR
-        bucket = buckets.setdefault(key, ([], []))
-        offset = len(bucket[0])
-        bucket[0].extend(vertices)
-        bucket[1].extend((offset + a, offset + b, offset + c) for a, b, c in faces)
-    return [
-        (colour, vertices, faces)
-        for colour, (vertices, faces) in sorted(
-            buckets.items(), key=lambda item: -len(item[1][1])
-        )
-    ]
+def name_index(step_path):
+    """Part name and centroid for every solid, taken from the STEP itself."""
+    scene = trimesh.load(step_path)
+    names = []
+    for name, geometry in scene.geometry.items():
+        centroid = geometry.centroid
+        names.append((name, (float(centroid[0]), float(centroid[1]), float(centroid[2]))))
+    return names
 
 
-def material_for(name, colour):
-    """A PBR material that keeps the CAD colour and reads as a real surface."""
-    rgb = [value / 255 for value in colour]
-    metallic = 0.85 if re.search(r"steel|alum|anod|chrome|brass", name, re.I) else 0.05
-    roughness = 0.3 if metallic > 0.5 else 0.55
-    material = trimesh.visual.material.PBRMaterial(
-        name=name,
-        baseColorFactor=rgb + [1.0],
-        metallicFactor=metallic,
-        roughnessFactor=roughness,
-        doubleSided=True,
-    )
-    return material
-
-
-def rename_root_node(path, name):
-    """Rename the glTF root node so the site can group it as an assembly."""
-    import struct
-
-    with open(path, "rb") as handle:
-        magic, version, length = struct.unpack("<III", handle.read(12))
-        chunks = []
-        while handle.tell() < length:
-            chunk_length, chunk_type = struct.unpack("<II", handle.read(8))
-            chunks.append((chunk_type, handle.read(chunk_length)))
-
-    document = json.loads(chunks[0][1].decode("utf-8"))
-    for node in document.get("nodes", []):
-        if node.get("name") == "world":
-            node["name"] = name
-    for scene in document.get("scenes", []):
-        scene["name"] = name
-    encoded = json.dumps(document, separators=(",", ":")).encode("utf-8")
-    encoded += b" " * ((4 - len(encoded) % 4) % 4)
-
-    rebuilt = [struct.pack("<II", len(encoded), 0x4E4F534A) + encoded]
-    rebuilt.extend(struct.pack("<II", len(payload), kind) + payload for kind, payload in chunks[1:])
-    with open(path, "wb") as handle:
-        handle.write(struct.pack("<III", 0x46546C67, 2, 12 + sum(len(c) for c in rebuilt)))
-        for chunk in rebuilt:
-            handle.write(chunk)
+def assign_assemblies(bodies, names, scale, bounds_top):
+    """Give every meshed body the assembly of the nearest named part."""
+    if not names:
+        return [CHASSIS] * len(bodies)
+    points = np.array([centroid for _, centroid in names])
+    assigned = []
+    for vertices, _, _ in bodies:
+        centre = np.mean(np.asarray(vertices) * scale, axis=0)
+        distance = np.linalg.norm(points - centre, axis=1)
+        index = int(np.argmin(distance))
+        assigned.append(classify(names[index][0], float(centre[1]), bounds_top))
+    return assigned
 
 
 def main():
@@ -230,9 +201,9 @@ def main():
     parser.add_argument("step")
     parser.add_argument("out")
     parser.add_argument("--deflection", type=float, default=0.8)
+    parser.add_argument("--relative", action="store_true", help="treat deflection as a fraction of each part size")
     parser.add_argument("--min-faces", type=int, default=6)
     parser.add_argument("--scale", type=float, default=0.001, help="STEP units to metres")
-    parser.add_argument("--root-name", default="INFERRED_DRIVETRAIN")
     args = parser.parse_args()
 
     started = time.time()
@@ -240,35 +211,70 @@ def main():
     print(f"read in {time.time() - started:.1f}s", flush=True)
 
     started = time.time()
-    parts, histogram = collect(shape_tool, color_tool, args.deflection, args.min_faces)
-    print(f"meshed {len(parts)} bodies in {time.time() - started:.1f}s", flush=True)
+    bodies, histogram = collect(shape_tool, color_tool, args.deflection, args.min_faces, args.relative)
+    print(f"meshed {len(bodies)} bodies in {time.time() - started:.1f}s", flush=True)
 
-    names = colour_names(args.step)
-    merged = merge_by_colour(parts)
-    print(f"merged into {len(merged)} meshes", flush=True)
+    every = np.concatenate([np.asarray(v) for v, _, _ in bodies]) * args.scale
+    low = every.min(axis=0)
+    high = every.max(axis=0)
+    centre = (low + high) / 2
+    bounds_top = float(high[1] - low[1])
+    print(f"bounds min {low.round(3).tolist()} max {high.round(3).tolist()}", flush=True)
+
+    names = name_index(args.step)
+    assemblies = assign_assemblies(bodies, names, args.scale, bounds_top)
+    counts = {}
+    for assembly in assemblies:
+        counts[assembly] = counts.get(assembly, 0) + 1
+    print("assemblies:", counts, flush=True)
+
+    # Group by assembly and colour so the browser draws a handful of materials
+    # while the scene can still move each assembly on scroll.
+    buckets = {}
+    for (vertices, faces, colour), assembly in zip(bodies, assemblies):
+        key = (assembly, colour or DEFAULT_COLOUR)
+        bucket = buckets.setdefault(key, ([], []))
+        offset = len(bucket[0])
+        bucket[0].extend((np.asarray(vertices) * args.scale))
+        bucket[1].extend((offset + a, offset + b, offset + c) for a, b, c in faces)
 
     scene = trimesh.Scene()
-    for index, (colour, vertices, faces) in enumerate(merged):
-        mesh = trimesh.Trimesh(
-            vertices=np.asarray(vertices, dtype=np.float64) * args.scale,
-            faces=faces,
-            process=False,
-        )
-        name = names.get(colour, f"Opaque({colour[0]},{colour[1]},{colour[2]})")
-        mesh.visual = trimesh.visual.TextureVisuals(material=material_for(name, colour))
-        scene.add_geometry(mesh, geom_name=f"cad_{index:02d}", node_name=f"cad_{index:02d}")
+    for assembly in ASSEMBLY_ORDER:
+        for (bucket_assembly, colour), (vertices, faces) in buckets.items():
+            if bucket_assembly != assembly or not faces:
+                continue
+            points = np.asarray(vertices)
+            points[:, 0] -= centre[0]
+            points[:, 2] -= centre[2]
+            points[:, 1] -= low[1]
+            mesh = trimesh.Trimesh(vertices=points, faces=faces, process=False)
+            name = f"Opaque({colour[0]},{colour[1]},{colour[2]})"
+            mesh.visual = trimesh.visual.TextureVisuals(
+                material=trimesh.visual.material.PBRMaterial(
+                    name=name,
+                    baseColorFactor=[value / 255 for value in colour] + [1.0],
+                    metallicFactor=0.1,
+                    roughnessFactor=0.5,
+                    doubleSided=True,
+                )
+            )
+            scene.add_geometry(
+                mesh,
+                geom_name=f"{assembly}_{colour[0]:02x}{colour[1]:02x}{colour[2]:02x}",
+                node_name=assembly,
+            )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     scene.export(args.out)
-    rename_root_node(args.out, args.root_name)
     print(
         json.dumps(
             {
                 "out": args.out,
                 "bytes": os.path.getsize(args.out),
-                "meshes": len(merged),
+                "meshes": len(scene.geometry),
                 "faces": sum(len(m.faces) for m in scene.geometry.values()),
                 "colours": len(histogram),
+                "assemblies": counts,
             }
         )
     )
