@@ -2,10 +2,10 @@
 """Repair the glTF node hierarchy of a model exported by trimesh.
 
 trimesh writes one node per assembly but keeps only a single mesh on it, so
-every other mesh ends up unreferenced. A glTF optimiser then prunes those
-orphans and the model silently loses most of its parts. This re-homes the
-unreferenced meshes under the assembly node that owns them, and leaves an
-already correct tree untouched.
+every other mesh ends up on a node that no parent points at. A glTF optimiser
+then prunes those unreferenced meshes and the model silently loses most of its
+parts. This re-homes every unreachable mesh node under the assembly node that
+owns it, and leaves an already correct tree untouched.
 """
 
 import argparse
@@ -46,68 +46,63 @@ def write_glb(path, document, binary):
 
 def repair(path, out_path):
     document, binary = read_glb(path)
-    meshes = document.get("meshes", [])
     nodes = document.get("nodes", [])
-    if not nodes:
-        print(f"{path}: no nodes, nothing to repair")
+    scenes = document.get("scenes", [])
+    if not nodes or not scenes:
+        print(f"{path}: nothing to repair")
         return 0
 
-    parent_of = {}
-    for index, node in enumerate(nodes):
-        for child in node.get("children", []) or []:
-            parent_of[child] = index
+    # Nodes reachable from the scene roots are the ones the renderer sees.
+    reachable = set()
+    stack = list(scenes[0].get("nodes", []) or [])
+    while stack:
+        index = stack.pop()
+        if index in reachable or index >= len(nodes):
+            continue
+        reachable.add(index)
+        stack.extend(nodes[index].get("children", []) or [])
 
-    # Assembly nodes own children and are named after an assembly.
-    assembly_of_node = {}
+    unreachable = [index for index in range(len(nodes)) if index not in reachable]
+    if not unreachable:
+        print(f"{path}: hierarchy already complete ({len(nodes)} nodes)")
+        if out_path != path:
+            with open(path, "rb") as src, open(out_path, "wb") as dst:
+                dst.write(src.read())
+        return 0
+
+    # Assembly nodes are the named groups that already own a mesh.
+    assemblies = {}
     for index, node in enumerate(nodes):
         name = node.get("name") or ""
-        if node.get("children") and not name.startswith("mesh_"):
-            assembly_of_node[index] = name
+        if index in reachable and node.get("mesh") is not None and not name.startswith("mesh_"):
+            assemblies[name] = index
 
-    referenced = set()
-    for index, node in enumerate(nodes):
-        if node.get("mesh") is not None:
-            referenced.add(node["mesh"])
-    orphans = [index for index in range(len(meshes)) if index not in referenced]
-    if not orphans:
-        print(f"{path}: hierarchy already complete ({len(meshes)} meshes)")
-        return 0
-
-    def assembly_for(mesh_index):
-        mesh_name = meshes[mesh_index].get("name") or ""
-        # Prefer the assembly of a node that already uses this mesh.
-        for index, node in enumerate(nodes):
-            if node.get("mesh") == mesh_index and index in assembly_of_node:
-                return assembly_of_node[index]
-        match = MESH_NAME.match(mesh_name)
-        if match:
-            candidate = match.group(1)
-            for name in assembly_of_node.values():
-                if name == candidate:
-                    return candidate
-            return candidate
+    def assembly_for(node_name):
+        match = MESH_NAME.match(node_name or "")
+        if match and match.group(1) in assemblies:
+            return assemblies[match.group(1)]
+        for name, index in assemblies.items():
+            if (node_name or "").startswith(name):
+                return index
         return None
 
-    # Create one node per orphan and attach it to its assembly.
-    created = []
-    for mesh_index in orphans:
-        mesh_name = meshes[mesh_index].get("name") or f"mesh_{mesh_index}"
-        node = {"name": mesh_name, "mesh": mesh_index}
-        nodes.append(node)
-        created.append((len(nodes) - 1, assembly_for(mesh_index)))
-
-    for node_index, assembly in created:
-        if assembly is None:
+    moved = 0
+    for index in unreachable:
+        node = nodes[index]
+        if node.get("mesh") is None:
             continue
-        for index, candidate in enumerate(nodes):
-            if (candidate.get("name") or "") == assembly and candidate.get("children") is not None:
-                candidate["children"] = list(candidate.get("children") or []) + [node_index]
-                break
+        target = assembly_for(node.get("name"))
+        if target is None:
+            continue
+        holder = nodes[target]
+        holder["children"] = list(holder.get("children", []) or []) + [index]
+        moved += 1
 
-    document["nodes"] = nodes
+    if moved:
+        document["nodes"] = nodes
     write_glb(out_path, document, binary)
-    print(f"{path}: re-homed {len(orphans)} orphaned meshes under the assembly nodes")
-    return len(orphans)
+    print(f"{path}: re-homed {moved} unreachable mesh nodes under their assembly")
+    return moved
 
 
 def main():
