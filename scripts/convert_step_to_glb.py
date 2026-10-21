@@ -162,6 +162,8 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallb
     histogram = {}
     panel_source = None
     missing_panels = []
+    mirrored_leaves = []
+    part_centroids = {}
 
     def resolve_shape(label, shape):
         """Return a shape that carries geometry.
@@ -189,11 +191,13 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallb
             pass
         return shape
 
-    def add_fallback_part(name):
+    def add_fallback_part(name, offset=None):
         """Add a part the XCAF reader could not hand over.
 
         The name of the leaf carries the instance suffix, so the lookup uses
-        the part name on its own.
+        the part name on its own. The second reader works in its own frame,
+        which is the CAD's frame moved a little, so every part it hands over
+        is moved back before it is used.
         """
         nonlocal panel_source
         if not fallback:
@@ -205,6 +209,8 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallb
         vertices, faces, colour = entry
         if len(faces) < min_faces:
             return False
+        if offset is not None:
+            vertices = [(x - offset[0], y - offset[1], z - offset[2]) for x, y, z in vertices]
         bodies.append((vertices, faces, colour))
         if colour:
             histogram[colour] = histogram.get(colour, 0) + len(faces)
@@ -235,12 +241,13 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallb
                     if "Innerpanel" in name:
                         missing_panels.append(name)
                 return
-            if is_mirrored(name) and add_fallback_part(name):
+            if is_mirrored(name):
                 # A mirrored instance is stored as a reflection. OpenCASCADE
                 # cannot carry a reflection, so it hands back the prototype
                 # turned instead: the part lands on the wrong side of the
                 # machine. The second reader keeps the reflection, so the
-                # mirrored part is taken from there.
+                # mirrored parts are taken from there once the frames agree.
+                mirrored_leaves.append(name)
                 return
             bodies_before = len(bodies)
             # Solids first, then the open bodies that are not part of any
@@ -265,6 +272,11 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallb
                 while face_explorer.More():
                     solid_faces.append(face_explorer.Current())
                     face_explorer.Next()
+            if bodies_for_label:
+                # Remember where this part sits, so the second reader's frame
+                # can be lined up with this one.
+                points = np.concatenate([np.asarray(body[0]) for body in bodies[bodies_before:]])
+                part_centroids[re.sub(r":\d+$", "", name)] = points.mean(axis=0)
 
             def is_solid_face(face):
                 return any(face.IsSame(other) for other in solid_faces)
@@ -312,11 +324,42 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallb
     for index in range(free_labels.Length()):
         walk(free_labels.Value(index + 1))
 
-    if missing_panels and panel_source is not None:
-        bodies.append(build_inner_panel(bodies, panel_source))
-        if bodies[-1][2]:
-            histogram[bodies[-1][2]] = histogram.get(bodies[-1][2], 0) + len(bodies[-1][1])
+    # Line the second reader's frame up with this one, then bring in the
+    # mirrored parts. The two readers place the machine's parts in almost the
+    # same place, but not exactly, and a part that is a few millimetres out of
+    # step shows on a machine this size.
+    offset = frame_offset(part_centroids, fallback)
+    if offset is not None:
+        print(f"second reader frame offset: {tuple(round(v, 2) for v in offset)}", flush=True)
+    for name in mirrored_leaves:
+        add_fallback_part(name, offset)
+    # The CAD carries no geometry for the mirrored inner panel. Making a plate
+    # up put a part where the CAD has none, which is worse than the gap it
+    # filled: the machine's outside is closed by the side panels that are in
+    # the file, and the inner plate never shows.
+    if missing_panels:
+        print(f"parts with no geometry in the CAD: {missing_panels}", flush=True)
     return bodies, histogram
+
+
+def frame_offset(part_centroids, fallback):
+    """The shift between the two readers' frames, in millimetres.
+
+    The same part is found in both. The difference between where each reader
+    puts it is the offset between the two frames.
+    """
+    if not part_centroids or not fallback:
+        return None
+    differences = []
+    for name, centre in part_centroids.items():
+        entry = fallback.get(name)
+        if entry is None:
+            continue
+        points = np.asarray(entry[0], dtype=float)
+        differences.append(points.mean(axis=0) - centre)
+    if not differences:
+        return None
+    return tuple(np.median(np.asarray(differences), axis=0))
 
 
 def build_inner_panel(bodies, panel_source):
@@ -389,9 +432,9 @@ def fallback_parts(step_path):
     CAD gives it, so those parts are taken from there.
     """
     try:
-        # process=False keeps the CAD's own coordinate frame. The default
-        # recentres the scene, which would put the part somewhere else
-        # entirely from where the assembly reader put it.
+        # The scene graph holds the placement of every instance. Reading the
+        # geometry directly gives the parts in their own local frames, which
+        # puts every mirrored part at the origin.
         scene = trimesh.load(step_path, process=False)
     except Exception as error:
         print(f"no fallback reader: {error}", flush=True)
@@ -402,10 +445,12 @@ def fallback_parts(step_path):
         print(f"no step colours: {error}", flush=True)
         by_name = {}
     parts = {}
-    for name, geometry in scene.geometry.items():
+    for geometry in scene.dump(concatenate=False):
+        meta = getattr(geometry, "metadata", {}) or {}
+        name = str(meta.get("file_name") or meta.get("name") or "")
         vertices = np.asarray(geometry.vertices, dtype=float) * 1000.0
         faces = np.asarray(geometry.faces, dtype=int)
-        if not len(faces):
+        if not len(faces) or not name:
             continue
         colour = by_name.get(name) or by_name.get(name.replace("(Mirror) (1)", "").strip())
         rgb = None
