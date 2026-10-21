@@ -166,6 +166,9 @@ export async function createScene(canvas,{onReady,onFallback}){
       target.x=0;frame.robot[0]*=fieldAmount;
     }
     camera.position.copy(position);camera.lookAt(target);camera.clearViewOffset();robot.position.fromArray(frame.robot);
+    // The shadow follows the robot, so it always lands under the machine
+    // instead of drifting off towards the middle of the field.
+    key.target.position.copy(robot.position);key.target.updateMatrixWorld();
     const ambientSweep=Math.sin(time*.18)*.055*(1-frame.field);
     robot.rotation.y=frame.rotation+ambientSweep;
     assemblies.forEach(({object,origin})=>{
@@ -196,7 +199,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
     accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
-    const extent=lerp(.95,3.4,alpha);
+    const extent=lerp(.95,2.2,alpha);
     // The shadow map is only redrawn when the shadowed area actually moves.
     // Asking for it every frame rebuilt the whole map sixty times a second.
     if(Math.abs(extent-shadowExtent)>.004){
