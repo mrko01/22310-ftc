@@ -49,7 +49,7 @@ export async function createScene(canvas,{onReady,onFallback}){
   catch(error){renderer.dispose();environment.dispose();throw error}
   const robot=new THREE.Group();robot.name='PRESENTATION_ROBOT_ROOT';robot.add(robotAsset.scene);scene.add(robot);
   const finishes=finishRobot(robot);
-  let fieldLoaded=false;
+  let fieldLoaded=false,fieldLoading=false;
   const field=new THREE.Group();field.name='OFFICIAL_FIRST_BIOBUZZ_FIELD';scene.add(field);
   const fieldMaterials=new Map();
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.ShadowMaterial({opacity:.55}));ground.rotation.x=-Math.PI/2;ground.position.y=-.003;ground.receiveShadow=true;scene.add(ground);
@@ -131,7 +131,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     window.__SAFFRON_QA__.fieldMerge={groups:groups.size,sizes:[...groups.values()].map(v=>v.length).sort((a,b)=>b-a).slice(0,6),merged,instances:mergedInstances};
   }
 
-  async function loadField(){try{
+  async function loadField(){if(fieldLoading||fieldLoaded)return;fieldLoading=true;try{
     const [asset,metadata]=await Promise.all([loader.loadAsync('/assets/field-compressed.glb'),fetch('/assets/field-metadata.json').then(response=>response.json())]);if(disposed)return;field.add(asset.scene);
     instanceStaticField(asset.scene,metadata);
     finishes.textures.push(...finishField(field).textures);
@@ -151,8 +151,12 @@ export async function createScene(canvas,{onReady,onFallback}){
       }
     });
     interactions.setField(field,metadata);
+    // The local flag is what the render loop checks, so it has to be set here
+    // as well. Setting only the QA copy let the loop fetch and draw the field
+    // again and again, which was most of the lag on the field.
+    fieldLoaded=true;
     window.__SAFFRON_QA__.fieldBounds=new THREE.Box3().setFromObject(field).getSize(new THREE.Vector3()).toArray();window.__SAFFRON_QA__.fieldLoaded=true;dirty=true;
-  }catch(error){if(disposed)return;window.__SAFFRON_QA__.errors.push('Field: '+String(error));console.warn('Field unavailable',error);onFallback()}}
+  }catch(error){if(disposed)return;window.__SAFFRON_QA__.errors.push('Field: '+String(error));console.warn('Field unavailable',error);onFallback()}finally{fieldLoading=false}}
   const position=new THREE.Vector3(),target=new THREE.Vector3();
   function applyFrame(){
     const frame=sampleFrames(desktopFrames,progress);position.fromArray(frame.camera);target.fromArray(frame.target);
@@ -195,7 +199,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     }
     // The field is a large asset, so it is fetched only when the timeline is
     // about to show it instead of at first paint.
-    if(!fieldLoaded&&alpha>.02)loadField();
+    if(!fieldLoaded&&!fieldLoading&&alpha>.02)loadField();
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
     accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
