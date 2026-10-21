@@ -56,7 +56,9 @@ export async function createScene(canvas,{onReady,onFallback}){
   const assemblies=[];
   robot.traverse(object=>{if(['SOURCE_SHOOTER','INFERRED_CHASSIS','INFERRED_INTAKE','INFERRED_INDEXER','INFERRED_DRIVETRAIN'].includes(object.name))assemblies.push({object,origin:object.position.clone()})});
   const robotBounds=new THREE.Box3().setFromObject(robot);
-  window.__SAFFRON_QA__.scene=scene;
+  // The scene itself is kept out of the cloned report: it carries functions
+  // and three.js objects that cannot be copied.
+  Object.defineProperty(window.__SAFFRON_QA__,'scene',{value:scene,enumerable:false,configurable:true,writable:true});
   window.__SAFFRON_QA__.robotLoaded=true;window.__SAFFRON_QA__.assemblies=assemblies.map(a=>a.object.name);window.__SAFFRON_QA__.robotBounds=robotBounds.getSize(new THREE.Vector3()).toArray();window.__SAFFRON_QA__.materialCount=finishes.materials.length;
   let targetProgress=0,progress=0,paused=false,disposed=false,animation=0,last=performance.now(),time=0,ready=false,visible=!document.hidden,dirty=true,motionUntil=performance.now()+4000,shadowExtent=-1;
   const interactions=createInteractions({canvas,camera,scene,robot,assemblies,invalidate(){dirty=true}});

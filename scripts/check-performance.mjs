@@ -6,8 +6,8 @@ try{
   for(const [label,viewport] of [['desktop',{width:1440,height:900}],['mobile',{width:390,height:844}]]){
     const page=await browser.newPage({viewport,deviceScaleFactor:label==='mobile'?2:1,isMobile:label==='mobile',hasTouch:label==='mobile'});
     await page.goto('http://127.0.0.1:22311/');
-    await page.waitForFunction(()=>window.__SAFFRON_QA__?.fieldLoaded,null,{timeout:60000});
     await page.evaluate(()=>scrollTo(0,.7*(document.querySelector('#experience').offsetHeight-innerHeight)));
+    await page.waitForFunction(()=>window.__SAFFRON_QA__?.fieldLoaded,null,{timeout:60000});
     await page.waitForFunction(()=>Math.abs(window.__SAFFRON_QA__.sceneProgress-.7)<.001);
     await page.keyboard.down('d');
     const data=await page.evaluate(()=>new Promise(resolve=>{

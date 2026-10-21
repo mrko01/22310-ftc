@@ -130,9 +130,9 @@ try {
     const session=await makePage(),{page,context}=session;
     try {
       await page.goto(baseURL,{waitUntil:'domcontentloaded'});
+      await page.evaluate(()=>scrollTo({top:.7*(document.querySelector('#experience').offsetHeight-innerHeight),behavior:'instant'}));
       await page.waitForFunction(()=>window.__SAFFRON_QA__?.fieldLoaded,null,{timeout:60000});
       entry.graphics=await graphics(page);
-      await page.evaluate(()=>scrollTo({top:.7*(document.querySelector('#experience').offsetHeight-innerHeight),behavior:'instant'}));
       entry.samples=[];
       for(let i=0;i<10;i++) {
         await page.waitForTimeout(2000);
@@ -156,8 +156,8 @@ try {
         check(!await page.locator('#home').innerText().then(text=>/Greater Sudbury|About this study|Pause motion|FTC\s*22310/.test(text)),`${name}: hero remains sparse`);
         entry.captures=[];entry.samples=[];
         for(const progress of [0,.28,.43,.7,1]) {
-          if(progress>=.7)await page.waitForFunction(()=>window.__SAFFRON_QA__.fieldLoaded,null,{timeout:60000});
           await scrollToProgress(page,progress);
+          if(progress>=.7)await page.waitForFunction(()=>window.__SAFFRON_QA__.fieldLoaded,null,{timeout:60000});
           const snapshot=await qa(page),bounds=await layout(page);
           check(snapshot.state==='webgl'&&snapshot.frames>0&&snapshot.triangles>0,`${name} ${progress}: real mesh rendering`,snapshot);
           check(snapshot.camera.length===3&&snapshot.camera.every(Number.isFinite),`${name} ${progress}: finite camera`);

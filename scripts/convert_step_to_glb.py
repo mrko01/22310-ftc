@@ -22,6 +22,7 @@ from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.Quantity import Quantity_Color
 from OCP.STEPCAFControl import STEPCAFControl_Reader
 from OCP.TCollection import TCollection_ExtendedString
+from OCP.TDataStd import TDataStd_Name
 from OCP.TDF import TDF_Label, TDF_LabelSequence
 from OCP.TDocStd import TDocStd_Document
 from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_SHELL, TopAbs_SOLID
@@ -104,6 +105,14 @@ def colour_of(color_tool, shape):
     return None
 
 
+def label_name(label):
+    """The part name the CAD gives this node of the assembly."""
+    name = TDataStd_Name()
+    if label.FindAttribute(TDataStd_Name.GetID_s(), name):
+        return name.Get().ToExtString()
+    return ""
+
+
 def tessellate(shape, deflection, relative=False):
     """Mesh a shape and return (vertices, faces).
 
@@ -141,6 +150,8 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
 
     bodies = []
     histogram = {}
+    panel_source = None
+    missing_panels = []
 
     def resolve_shape(label, shape):
         """Return a shape that carries geometry.
@@ -169,21 +180,29 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
         return shape
 
     def walk(label):
+        nonlocal panel_source
         components = TDF_LabelSequence()
         shape_tool.GetComponents_s(label, components)
         if components.Length() == 0:
+            name = label_name(label)
             try:
                 shape = shape_tool.GetShape_s(label)
             except Exception:
                 return
             shape = resolve_shape(label, shape)
             if shape is None or shape.IsNull():
+                # The CAD export leaves this plate without any geometry: the
+                # product has no shape at all, so no reader can recover it.
+                if "Innerpanel" in name:
+                    missing_panels.append(name)
                 return
+            bodies_before = len(bodies)
             # Solids first, then the open bodies that are not part of any
             # solid. Sheet metal panels are often modelled as a shell or a
             # single face, and walking solids alone leaves those plates out
             # of the model.
             solid_faces = []
+            bodies_for_label = 0
             explorer = TopExp_Explorer(shape, TopAbs_SOLID)
             while explorer.More():
                 body = explorer.Current()
@@ -193,6 +212,7 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                 if len(faces) < min_faces:
                     continue
                 bodies.append((vertices, faces, colour))
+                bodies_for_label += 1
                 if colour:
                     histogram[colour] = histogram.get(colour, 0) + len(faces)
                 face_explorer = TopExp_Explorer(body, TopAbs_FACE)
@@ -216,6 +236,7 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                     vertices, faces = tessellate(shell, deflection, relative)
                     if len(faces) >= min_faces:
                         bodies.append((vertices, faces, colour))
+                        bodies_for_label += 1
                         if colour:
                             histogram[colour] = histogram.get(colour, 0) + len(faces)
                 shell_explorer.Next()
@@ -228,16 +249,60 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                     vertices, faces = tessellate(face, deflection, relative)
                     if len(faces) >= min_faces:
                         bodies.append((vertices, faces, colour))
+                        bodies_for_label += 1
                         if colour:
                             histogram[colour] = histogram.get(colour, 0) + len(faces)
                 face_explorer.Next()
+            if "Innerpanel" in name and not bodies_for_label:
+                missing_panels.append(name)
+            if "Outerpanel" in name and panel_source is None and len(bodies) > bodies_before:
+                panel_source = bodies[bodies_before]
             return
         for index in range(components.Length()):
             walk(components.Value(index + 1))
 
     for index in range(free_labels.Length()):
         walk(free_labels.Value(index + 1))
+
+    if missing_panels and panel_source is not None:
+        bodies.append(build_inner_panel(bodies, panel_source))
+        if bodies[-1][2]:
+            histogram[bodies[-1][2]] = histogram.get(bodies[-1][2], 0) + len(bodies[-1][1])
     return bodies, histogram
+
+
+def build_inner_panel(bodies, panel_source):
+    """Rebuild the chassis inner panel from the outer panel that survived.
+
+    The CAD export of the mirrored inner panel carries no geometry at all, so
+    the plate is rebuilt from the outer side panel: the same shape, a little
+    smaller, and set just inside the frame. It keeps the machine's side from
+    reading as an open hole.
+    """
+    vertices, faces, colour = panel_source
+    points = np.asarray(vertices, dtype=float)
+    low = points.min(axis=0)
+    high = points.max(axis=0)
+    extent = high - low
+    # The plate is thin across one axis: that axis is its normal.
+    normal = int(np.argmin(extent))
+    in_plane = [axis for axis in range(3) if axis != normal]
+    centre = (low + high) / 2.0
+
+    # The inside of the frame is towards the middle of the machine.
+    everything = np.concatenate([np.asarray(body[0], dtype=float) for body in bodies])
+    machine_centre = (everything.min(axis=0) + everything.max(axis=0)) / 2.0
+    inward = 1.0 if machine_centre[normal] >= centre[normal] else -1.0
+
+    rebuilt = points.copy()
+    for axis in in_plane:
+        rebuilt[:, axis] = centre[axis] + (rebuilt[:, axis] - centre[axis]) * 0.94
+    rebuilt[:, normal] += inward * max(extent[normal] * 1.5, 2.0)
+    print(
+        f"rebuilt the inner panel from the outer panel "
+        f"(normal axis {normal}, extent {np.round(extent, 2).tolist()})"
+    )
+    return ([tuple(point) for point in rebuilt], faces, colour)
 
 
 def name_index(step_path):
