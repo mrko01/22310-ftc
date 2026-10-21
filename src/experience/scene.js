@@ -40,7 +40,7 @@ export async function createScene(canvas,{onReady,onFallback}){
   scene.add(new THREE.AmbientLight(0x8f98ac,.28));
   const key=new THREE.DirectionalLight(0xf6f8ff,4.2);key.position.set(-1.2,2.4,1.1);key.castShadow=true;key.shadow.mapSize.set(mobile?768:1024,mobile?768:1024);key.shadow.camera.near=.1;key.shadow.camera.far=8;key.shadow.camera.left=-.65;key.shadow.camera.right=.65;key.shadow.camera.top=.65;key.shadow.camera.bottom=-.65;key.shadow.bias=-.0002;key.shadow.normalBias=.0006;key.shadow.radius=4;scene.add(key,key.target);
   const fill=new THREE.DirectionalLight(0xc9d6ff,.55);fill.position.set(3,1,1);scene.add(fill);
-  const rim=new THREE.DirectionalLight(0xff3b4a,1.15);rim.position.set(-2,1.3,-2);scene.add(rim);
+  const rim=new THREE.DirectionalLight(0xff7a72,.55);rim.position.set(-2,1.3,-2);scene.add(rim);
   const accent=new THREE.PointLight(0xff5566,.35,5,2);accent.position.set(.5,.6,-.7);scene.add(accent);
   const particles=createParticles(mobile);scene.add(particles);
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -162,6 +162,18 @@ export async function createScene(canvas,{onReady,onFallback}){
   const position=new THREE.Vector3(),target=new THREE.Vector3();
   function applyFrame(){
     const frame=sampleFrames(desktopFrames,progress);position.fromArray(frame.camera);target.fromArray(frame.target);
+    // A camera can be pinned from the address bar for review and for the
+    // reference shots: ?cam=x,y,z&look=x,y,z
+    const pinned=new URLSearchParams(location.search).get('cam');
+    if(pinned){
+      const [px,py,pz]=pinned.split(',').map(Number);
+      if([px,py,pz].every(Number.isFinite)){position.set(px,py,pz);}
+      const look=new URLSearchParams(location.search).get('look');
+      if(look){
+        const [lx,ly,lz]=look.split(',').map(Number);
+        if([lx,ly,lz].every(Number.isFinite))target.set(lx,ly,lz);
+      }
+    }
     const isMobile=innerWidth<701;
     if(isMobile){
       const fieldAmount=between(progress,.49,.62)*(1-between(progress,.87,1));
@@ -204,7 +216,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     if(!fieldLoaded&&!fieldLoading&&alpha>.02)loadField();
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
-    accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
+    accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(.55,.3,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
     const extent=lerp(1.8,4.2,alpha);
     // The shadow map is only redrawn when the shadowed area actually moves.
     // Asking for it every frame rebuilt the whole map sixty times a second.

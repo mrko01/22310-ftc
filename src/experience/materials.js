@@ -27,62 +27,38 @@ function ensureUV(geometry){
   geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
 }
 
-// The CAD exports neutral greys, so the palette is rebuilt from the colour
-// itself. The team colour is saffron red: it lands on the saturated warm
-// parts (motors, hubs, belt hardware) while the structure stays metal.
-const TEAM_RED=0xa8122c;
-const DEEP_RED=0x7d0f20;
+// The robot wears the colours the CAD gives it. The step file carries the
+// colour of every solid, and the machine is a study in yellow pulleys, a
+// black shield, silver motors and a grey frame. Rewriting those into a
+// team colour made the robot look like a different machine, so the colour
+// is used as it is and only the finish is chosen from it.
 const ANODISED=0x3c434c;
 const GRAPHITE=0x2b3037;
 const ALUMINIUM=0x8d949d;
 const STEEL=0x767e87;
-const BRONZE=0x8a6a3c;
 const DEEP_BLUE=0x1f3f7a;
 const BRIGHT_BLUE=0x2f5fb0;
 
 function palette(name, colour){
   // Returns {color, metalness, roughness, kind} for a CAD colour.
+  //
+  // The colour is the one the CAD gives the part. Only the finish is
+  // chosen: a saturated colour is paint, a bright neutral is bare metal, a
+  // dark neutral is the black hardware, and a mid grey is anodised.
   if(!colour)return {color:ALUMINIUM,metalness:.85,roughness:.34,kind:'metal'};
   const [r,g,b]=colour,max=Math.max(r,g,b),min=Math.min(r,g,b);
   const saturation=max?(max-min)/max:0;
-  const warm=r>=g&&g>=b,cool=b>r;
-  // The ramp is a single plate that the team colour would flatten, so it gets
-  // a deeper red than the rest of the machine.
-  if(/ramp/i.test(name))return {color:DEEP_RED,metalness:.42,roughness:.34,kind:'paint'};
-  // Yellow is the old team colour: it is red now, everywhere it appears.
-  if(r>140&&g>95&&b<130&&r-b>60&&g-b>20){
-    return {color:TEAM_RED,metalness:.35,roughness:.32,kind:'paint'};
+  if(saturation>0.18){
+    // The yellow pulleys and the blue motor bodies keep their own colour.
+    const metalness=saturation>0.5?.45:.25;
+    return {color:(r<<16)|(g<<8)|b,metalness,roughness:saturation>0.5?.34:.42,kind:'paint'};
   }
-  if(saturation>0.55&&warm){
-    // The strongest saffron accents carry the team colour.
-    return {color:TEAM_RED,metalness:.35,roughness:.32,kind:'paint'};
-  }
-  if(saturation>0.3&&warm){
-    // Warmer hardware stays metal so the robot is not uniformly red.
-    return {color:BRONZE,metalness:.88,roughness:.4,kind:'metal'};
-  }
-  if(saturation>0.3&&cool){
-    return {color:DEEP_BLUE,metalness:.6,roughness:.28,kind:'paint'};
-  }
-  if(r>90&&g>60&&b<95&&r-b>40){
-    return {color:BRONZE,metalness:.88,roughness:.44,kind:'metal'};
-  }
-  if(max>=215&&saturation<0.12){
-    // Near-white in the CAD is raw aluminium on this machine, not
-    // polycarbonate: the big side panels come through as a bare plate. A
-    // translucent finish on them washed the whole side of the robot out.
-    return {color:ALUMINIUM,metalness:.82,roughness:.46,kind:'metal'};
-  }
-  if(max>=185){
-    return {color:ALUMINIUM,metalness:.88,roughness:.4,kind:'metal'};
-  }
-  if(max>=120){
-    return {color:STEEL,metalness:.86,roughness:.42,kind:'metal'};
-  }
-  if(max>=60){
-    return {color:ANODISED,metalness:.8,roughness:.44,kind:'metal'};
-  }
-  return {color:GRAPHITE,metalness:.12,roughness:.58,kind:'composite'};
+  if(max>=215)return {color:(r<<16)|(g<<8)|b,metalness:.86,roughness:.36,kind:'metal'};
+  if(max>=170)return {color:(r<<16)|(g<<8)|b,metalness:.88,roughness:.4,kind:'metal'};
+  if(max>=100)return {color:(r<<16)|(g<<8)|b,metalness:.82,roughness:.44,kind:'metal'};
+  if(max>=55)return {color:(r<<16)|(g<<8)|b,metalness:.72,roughness:.48,kind:'metal'};
+  // The black hardware: the shield, the frame, the wheels.
+  return {color:(r<<16)|(g<<8)|b,metalness:.35,roughness:.62,kind:'composite'};
 }
 
 export function finishRobot(robot){
