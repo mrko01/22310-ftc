@@ -45,14 +45,14 @@ export async function createScene(canvas,{onReady,onFallback}){
   const particles=createParticles(mobile);scene.add(particles);
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let robotAsset;
-  try{robotAsset=await loader.loadAsync('/assets/robot.glb?v=3')}
+  try{robotAsset=await loader.loadAsync('/assets/robot.glb?v=4')}
   catch(error){renderer.dispose();environment.dispose();throw error}
   const robot=new THREE.Group();robot.name='PRESENTATION_ROBOT_ROOT';robot.add(robotAsset.scene);scene.add(robot);
   const finishes=finishRobot(robot);
   let fieldLoaded=false,fieldLoading=false;
   const field=new THREE.Group();field.name='OFFICIAL_FIRST_BIOBUZZ_FIELD';scene.add(field);
   const fieldMaterials=new Map();
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.ShadowMaterial({opacity:.55}));ground.rotation.x=-Math.PI/2;ground.position.y=-.003;ground.receiveShadow=true;scene.add(ground);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(6,6),new THREE.ShadowMaterial({opacity:.55}));ground.rotation.x=-Math.PI/2;ground.position.y=-.003;ground.receiveShadow=true;scene.add(ground);
   const assemblies=[];
   robot.traverse(object=>{if(['SOURCE_SHOOTER','INFERRED_CHASSIS','INFERRED_INTAKE','INFERRED_INDEXER','INFERRED_DRIVETRAIN'].includes(object.name))assemblies.push({object,origin:object.position.clone()})});
   const robotBounds=new THREE.Box3().setFromObject(robot);
@@ -179,10 +179,10 @@ export async function createScene(canvas,{onReady,onFallback}){
     robot.rotation.y=frame.rotation+ambientSweep;
     assemblies.forEach(({object,origin})=>{
       object.position.copy(origin);
-      if(object.name==='SOURCE_SHOOTER')object.position.y+=frame.explode*.085;
-      if(object.name==='INFERRED_INTAKE'){object.position.y+=frame.explode*.04;object.position.z+=frame.explode*.055}
-      if(object.name==='INFERRED_CHASSIS')object.position.y+=frame.explode*.018;
-      if(object.name==='INFERRED_INDEXER'){object.position.y+=frame.explode*.05;object.position.z-=frame.explode*.028}
+      if(object.name==='SOURCE_SHOOTER')object.position.y+=frame.explode*.16;
+      if(object.name==='INFERRED_INTAKE'){object.position.y+=frame.explode*.075;object.position.z+=frame.explode*.105}
+      if(object.name==='INFERRED_CHASSIS')object.position.y+=frame.explode*.034;
+      if(object.name==='INFERRED_INDEXER'){object.position.y+=frame.explode*.095;object.position.z-=frame.explode*.053}
     });
     if(framingDirty&&progress<.001){
       robot.updateWorldMatrix(true,true);camera.updateMatrixWorld();
@@ -205,7 +205,7 @@ export async function createScene(canvas,{onReady,onFallback}){
     particles.material.uniforms.uProgress.value=progress;particles.material.uniforms.uTime.value=time+progress*12;particles.material.uniforms.uPixelRatio.value=renderer.getPixelRatio();
     particles.rotation.y=progress*.11;
     accent.intensity=.35*(1-alpha*.85);rim.intensity=lerp(1.15,.4,alpha);key.intensity=lerp(4.2,2.0,alpha);scene.environmentIntensity=lerp(0.95,1.1,alpha);
-    const extent=lerp(.95,2.2,alpha);
+    const extent=lerp(1.8,4.2,alpha);
     // The shadow map is only redrawn when the shadowed area actually moves.
     // Asking for it every frame rebuilt the whole map sixty times a second.
     if(Math.abs(extent-shadowExtent)>.004){

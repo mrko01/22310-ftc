@@ -19,13 +19,13 @@ export const chapters=[
 export function chapterOpacity(chapter,progress){return (chapter.start===0?1:between(progress,chapter.start,chapter.inEnd))*(1-between(progress,chapter.outStart,chapter.end))}
 
 export const desktopFrames=[
-  {at:0,camera:[.85,.59,1.39],target:[0,.2,0],robot:[0,0,0],rotation:-.12,explode:0,field:0},
-  {at:.14,camera:[.85,.64,1.36],target:[0,.23,0],robot:[0,0,0],rotation:.14,explode:0,field:0},
-  {at:.28,camera:[.95,.72,1.62],target:[.08,.22,0],robot:[.16,0,0],rotation:.2,explode:1,field:0},
-  {at:.43,camera:[.74,.62,1.36],target:[-.04,.26,0],robot:[-.14,.012,0],rotation:-.4,explode:.42,field:0},
-  {at:.50,camera:[.88,.82,1.82],target:[0,.20,0],robot:[-.08,0,0],rotation:-.3,explode:0,field:0},
-  {at:.62,camera:[5.6,4.7,6.5],target:[-.44,.28,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
-  {at:.77,camera:[5.4,4.7,6.7],target:[-.50,.3,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
-  {at:.88,camera:[3.9,4.2,6.8],target:[-.1,.25,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
-  {at:1,camera:[.88,.60,1.45],target:[0,.19,0],robot:[.29,0,0],rotation:.42,explode:0,field:0}
+  {at:0,camera:[1.23,.70,2.02],target:[0,.13,0],robot:[0,0,0],rotation:2.9,explode:0,field:0},
+  {at:.14,camera:[1.23,.74,1.97],target:[0,.15,0],robot:[0,0,0],rotation:2.72,explode:0,field:0},
+  {at:.28,camera:[1.41,.87,2.35],target:[.15,.14,0],robot:[.30,0,0],rotation:2.5,explode:1,field:0},
+  {at:.43,camera:[1.05,.67,1.97],target:[-.08,.15,0],robot:[-.26,.022,0],rotation:2.24,explode:.42,field:0},
+  {at:.50,camera:[1.28,1.02,2.64],target:[0,.12,0],robot:[-.15,0,0],rotation:1.95,explode:0,field:0},
+  {at:.62,camera:[5.6,4.7,6.5],target:[-.44,.28,0],robot:[1.1,0,1.1],rotation:2.72,explode:0,field:1},
+  {at:.77,camera:[5.4,4.7,6.7],target:[-.50,.3,0],robot:[1.1,0,1.1],rotation:2.72,explode:0,field:1},
+  {at:.88,camera:[3.9,4.2,6.8],target:[-.1,.25,0],robot:[1.1,0,1.1],rotation:2.72,explode:0,field:1},
+  {at:1,camera:[1.28,.71,2.10],target:[0,.12,0],robot:[.55,0,0],rotation:2.62,explode:0,field:0}
 ];

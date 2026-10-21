@@ -33,6 +33,9 @@ from OCP.XCAFDoc import XCAFDoc_ColorType, XCAFDoc_DocumentTool, XCAFDoc_ShapeTo
 
 import trimesh
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import step_colors  # noqa: E402
+
 COLOUR_TYPES = (
     XCAFDoc_ColorType.XCAFDoc_ColorGen,
     XCAFDoc_ColorType.XCAFDoc_ColorSurf,
@@ -143,8 +146,15 @@ def tessellate(shape, deflection, relative=False):
     return vertices, faces
 
 
-def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
-    """Walk the assembly tree and mesh every coloured solid body."""
+def collect(shape_tool, color_tool, deflection, min_faces, relative=False, fallback=None):
+    """Walk the assembly tree and mesh every coloured solid body.
+
+    ``fallback`` is an optional map of part name to (vertices, faces) for the
+    parts the XCAF reader cannot hand over. Some mirrored instances in a Fusion
+    export point at a shared representation that no reader attaches to the
+    instance, so those plates would simply be missing from the model. A second
+    reader does resolve them, and they are filled in from there.
+    """
     free_labels = TDF_LabelSequence()
     shape_tool.GetFreeShapes(free_labels)
 
@@ -179,6 +189,33 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
             pass
         return shape
 
+    def add_fallback_part(name):
+        """Add a part the XCAF reader could not hand over.
+
+        The name of the leaf carries the instance suffix, so the lookup uses
+        the part name on its own.
+        """
+        nonlocal panel_source
+        if not fallback:
+            return False
+        key = re.sub(r":\d+$", "", name or "")
+        entry = fallback.get(key)
+        if entry is None:
+            return False
+        vertices, faces, colour = entry
+        if len(faces) < min_faces:
+            return False
+        bodies.append((vertices, faces, colour))
+        if colour:
+            histogram[colour] = histogram.get(colour, 0) + len(faces)
+        if "Outerpanel" in name and panel_source is None:
+            panel_source = bodies[-1]
+        print(f"filled in {name!r} from the second reader", flush=True)
+        return True
+
+    def is_mirrored(name):
+        return "(Mirror)" in (name or "")
+
     def walk(label):
         nonlocal panel_source
         components = TDF_LabelSequence()
@@ -191,10 +228,19 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                 return
             shape = resolve_shape(label, shape)
             if shape is None or shape.IsNull():
-                # The CAD export leaves this plate without any geometry: the
-                # product has no shape at all, so no reader can recover it.
-                if "Innerpanel" in name:
-                    missing_panels.append(name)
+                # The CAD export leaves this part without any geometry: the
+                # product has no shape of its own. A second reader does resolve
+                # it, so the part is filled in from there when it is available.
+                if not add_fallback_part(name):
+                    if "Innerpanel" in name:
+                        missing_panels.append(name)
+                return
+            if is_mirrored(name) and add_fallback_part(name):
+                # A mirrored instance is stored as a reflection. OpenCASCADE
+                # cannot carry a reflection, so it hands back the prototype
+                # turned instead: the part lands on the wrong side of the
+                # machine. The second reader keeps the reflection, so the
+                # mirrored part is taken from there.
                 return
             bodies_before = len(bodies)
             # Solids first, then the open bodies that are not part of any
@@ -253,6 +299,8 @@ def collect(shape_tool, color_tool, deflection, min_faces, relative=False):
                         if colour:
                             histogram[colour] = histogram.get(colour, 0) + len(faces)
                 face_explorer.Next()
+            if not bodies_for_label and add_fallback_part(name):
+                bodies_for_label += 1
             if "Innerpanel" in name and not bodies_for_label:
                 missing_panels.append(name)
             if "Outerpanel" in name and panel_source is None and len(bodies) > bodies_before:
@@ -331,6 +379,48 @@ def assign_assemblies(bodies, names, scale, bounds_top):
     return assigned, part_names
 
 
+def fallback_parts(step_path):
+    """Parts the XCAF reader cannot hand over, taken from a second reader.
+
+    A Fusion export stores some mirrored instances against a shared
+    representation. OpenCASCADE's assembly reader never attaches that
+    geometry to the instance, so the plate would be missing from the model.
+    Trimesh reads the same file and does resolve it, with the placement the
+    CAD gives it, so those parts are taken from there.
+    """
+    try:
+        # process=False keeps the CAD's own coordinate frame. The default
+        # recentres the scene, which would put the part somewhere else
+        # entirely from where the assembly reader put it.
+        scene = trimesh.load(step_path, process=False)
+    except Exception as error:
+        print(f"no fallback reader: {error}", flush=True)
+        return {}
+    try:
+        by_name, _, _ = step_colors.parse(step_path)
+    except Exception as error:
+        print(f"no step colours: {error}", flush=True)
+        by_name = {}
+    parts = {}
+    for name, geometry in scene.geometry.items():
+        vertices = np.asarray(geometry.vertices, dtype=float) * 1000.0
+        faces = np.asarray(geometry.faces, dtype=int)
+        if not len(faces):
+            continue
+        colour = by_name.get(name) or by_name.get(name.replace("(Mirror) (1)", "").strip())
+        rgb = None
+        if colour and len(colour) >= 4:
+            # The STEP colour is (name, r, g, b) with the channels in 0..1.
+            rgb = tuple(int(round(float(channel) * 255)) for channel in colour[1:4])
+        parts[name] = (
+            [tuple(vertex) for vertex in vertices],
+            [tuple(int(index) for index in face) for face in faces],
+            rgb,
+        )
+    print(f"fallback parts: {len(parts)}", flush=True)
+    return parts
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("step")
@@ -346,7 +436,8 @@ def main():
     print(f"read in {time.time() - started:.1f}s", flush=True)
 
     started = time.time()
-    bodies, histogram = collect(shape_tool, color_tool, args.deflection, args.min_faces, args.relative)
+    bodies, histogram = collect(shape_tool, color_tool, args.deflection, args.min_faces, args.relative,
+                                fallback_parts(args.step))
     print(f"meshed {len(bodies)} bodies in {time.time() - started:.1f}s", flush=True)
 
     every = np.concatenate([np.asarray(v) for v, _, _ in bodies]) * args.scale

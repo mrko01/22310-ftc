@@ -68,8 +68,10 @@ function palette(name, colour){
     return {color:BRONZE,metalness:.88,roughness:.44,kind:'metal'};
   }
   if(max>=215&&saturation<0.12){
-    // Clear or white polycarbonate: keep it translucent.
-    return {color:0xe8eef4,metalness:.05,roughness:.12,kind:'clear'};
+    // Near-white in the CAD is raw aluminium on this machine, not
+    // polycarbonate: the big side panels come through as a bare plate. A
+    // translucent finish on them washed the whole side of the robot out.
+    return {color:ALUMINIUM,metalness:.82,roughness:.46,kind:'metal'};
   }
   if(max>=185){
     return {color:ALUMINIUM,metalness:.88,roughness:.4,kind:'metal'};
