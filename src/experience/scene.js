@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
-import {RGBELoader} from 'three/addons/loaders/RGBELoader.js';
+import {HDRLoader} from 'three/addons/loaders/HDRLoader.js';
 import {clamp,lerp,between,sampleFrames,desktopFrames} from './timeline.mjs';
 import {finishRobot,finishField} from './materials.js';
 import {createInteractions} from './interactions.js';
@@ -34,7 +34,7 @@ export async function createScene(canvas,{onReady,onFallback}){
   const gl=renderer.getContext();if(gl.isContextLost())throw new Error('WebGL context unavailable');
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(31,innerWidth/innerHeight,.02,80);
   const pmrem=new THREE.PMREMGenerator(renderer);let environment;
-  try{const hdr=await new RGBELoader().loadAsync('/assets/studio.hdr');environment=pmrem.fromEquirectangular(hdr);hdr.dispose()}
+  try{const hdr=await new HDRLoader().loadAsync('/assets/studio.hdr');environment=pmrem.fromEquirectangular(hdr);hdr.dispose()}
   catch{const room=new RoomEnvironment();environment=pmrem.fromScene(room,.05);room.dispose()}
   scene.environment=environment.texture;scene.environmentRotation.y=.65;scene.environmentIntensity=0.95;pmrem.dispose();
   scene.add(new THREE.AmbientLight(0x8f98ac,.28));
