@@ -10,9 +10,10 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const smooth = (value) => { const x = clamp(value, 0, 1); return x*x*(3-2*x); };
 const UP = new THREE.Vector3(0, 1, 0);
 const PART_NAMES = {
-  SOURCE_SHOOTER: 'Flywheel shooter', INFERRED_INTAKE: 'Intake',
-  INFERRED_INDEXER: 'Indexer', INFERRED_CHASSIS: 'Chassis',
-  INFERRED_DRIVETRAIN: 'Mecanum drive',
+  // The robot's five meshes are grouped by kind of part, not by subsystem.
+  SOURCE_SHOOTER: 'Shooter ramp and belts', INFERRED_INTAKE: 'Wheels and gears',
+  INFERRED_INDEXER: 'Pulleys', INFERRED_CHASSIS: 'Frame',
+  INFERRED_DRIVETRAIN: 'Motors and shafts',
 };
 
 /** Slide along field boundaries and the central frame instead of teleporting. */

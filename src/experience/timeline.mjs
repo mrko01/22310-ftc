@@ -29,5 +29,5 @@ export const desktopFrames=[
   {at:.62,camera:[5.6,4.7,6.5],target:[-.44,.28,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
   {at:.77,camera:[5.4,4.7,6.7],target:[-.50,.3,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
   {at:.88,camera:[3.9,4.2,6.8],target:[-.1,.25,0],robot:[1.1,0,1.1],rotation:-.4,explode:0,field:1},
-  {at:1,camera:[.88,.60,1.45],target:[0,.19,0],robot:[.29,0,0],rotation:.42,explode:0,field:0}
+  {at:1,camera:[.88,.60,1.45],target:[0,.12,0],robot:[.14,0,0],rotation:.42,explode:0,field:0}
 ];

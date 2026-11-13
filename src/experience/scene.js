@@ -25,6 +25,34 @@ function createParticles(mobile){
   const points=new THREE.Points(geometry,material);points.frustumCulled=false;return points;
 }
 
+// The robot is the full Oct 16 CAD export, decimated and split into five
+// meshes by kind of part. The export carries no normals and only a blank
+// texture, so normals are rebuilt here and every group is given the colour
+// its parts have in the CAD: a grey frame, silver motors and shafts, dark
+// wheels and gears, yellow pulleys and a black shooter ramp and shield.
+// The colours go through the CAD palette in materials.js as Opaque(r,g,b).
+const ROBOT_GROUP_COLOURS={
+  INFERRED_CHASSIS:[150,156,164],
+  INFERRED_DRIVETRAIN:[196,200,206],
+  INFERRED_INTAKE:[38,40,44],
+  INFERRED_INDEXER:[232,173,35],
+  SOURCE_SHOOTER:[24,26,30],
+};
+function prepareRobot(root){
+  root.traverse(object=>{
+    if(!object.isMesh)return;
+    const geometry=object.geometry;
+    if(!geometry.attributes.normal)geometry.computeVertexNormals();
+    let group=object;while(group&&!ROBOT_GROUP_COLOURS[group.name])group=group.parent;
+    const colour=group&&ROBOT_GROUP_COLOURS[group.name];
+    for(const material of Array.isArray(object.material)?object.material:[object.material]){
+      // The blank baked texture only darkens the CAD colour.
+      material.map=null;material.metalnessMap=null;material.roughnessMap=null;
+      if(colour)material.name=`Opaque(${colour.join(',')})`;
+    }
+  });
+}
+
 export async function createScene(canvas,{onReady,onFallback}){
   const mobile=innerWidth<701;
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
@@ -45,8 +73,9 @@ export async function createScene(canvas,{onReady,onFallback}){
   const particles=createParticles(mobile);scene.add(particles);
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let robotAsset;
-  try{robotAsset=await loader.loadAsync('/assets/robot.glb?v=4')}
+  try{robotAsset=await loader.loadAsync('/assets/robot.glb?v=5')}
   catch(error){renderer.dispose();environment.dispose();throw error}
+  prepareRobot(robotAsset.scene);
   const robot=new THREE.Group();robot.name='PRESENTATION_ROBOT_ROOT';robot.add(robotAsset.scene);scene.add(robot);
   const finishes=finishRobot(robot);
   let fieldLoaded=false,fieldLoading=false;
@@ -73,21 +102,32 @@ export async function createScene(canvas,{onReady,onFallback}){
     for(const hive of metadata?.hives??[])moving.add(hive.name);
     const groups=new Map();
     const collect=[];
+    const startingGroup=metadata?.startingPiecesGroup??'STARTING_PIECES';
+    // Anything inside a hive or the starting pieces is moved by the play, so
+    // the whole subtree stays as it is, not only its top node. Merging a hive
+    // part into a mesh that lives elsewhere left the hive shells floating
+    // above the field and stopped them tipping with the hive.
+    const playOwned=object=>{
+      for(let node=object;node&&node!==root;node=node.parent){
+        if(moving.has(node.name)||node.name===startingGroup)return true;
+      }
+      return false;
+    };
+    root.updateMatrixWorld(true);
     root.traverse(object=>{
       if(!(object.isMesh||object.isInstancedMesh)||!object.geometry)return;
-      if(moving.has(object.name))return;
-      // Only the pieces the play moves are left alone: the direct children of
-      // the starting group.
-      if(object.parent?.name===metadata?.startingPiecesGroup)return;
+      if(playOwned(object))return;
       // The loader gives every copy of a repeated piece its own geometry,
       // material and node name, so the copies are matched by the shape of
-      // their vertices instead. A repeated field element always has the same
-      // geometry and the same colour, so the first copy stands for the group.
+      // their vertices instead. Red and blue copies share a shape, so the
+      // colour and material are part of the match too: otherwise one
+      // alliance's tape and parts were drawn in the other's colour.
       const position=object.geometry.attributes?.position;
-      let fingerprint=String(position?.count??0);
+      const material=Array.isArray(object.material)?object.material[0]:object.material;
+      let fingerprint=`${position?.count??0}|${material?.name??''}|${material?.color?.getHexString?.()??''}|${material?.opacity??1}`;
       if(position){
         for(let index=0;index<Math.min(16,position.count);index++){
-          fingerprint+=`:${position.getX(index).toFixed(5)}`;
+          fingerprint+=`:${position.getX(index).toFixed(5)},${position.getY(index).toFixed(5)}`;
         }
       }
       const key=fingerprint;
@@ -96,13 +136,15 @@ export async function createScene(canvas,{onReady,onFallback}){
     });
     const matrix=new THREE.Matrix4();
     const local=new THREE.Matrix4();
+    // Instance matrices are written in the root's space and the merged mesh
+    // is attached to the root. Attaching it to the first copy's parent while
+    // writing world matrices applied that parent's transform twice.
+    const toRoot=root.matrixWorld.clone().invert();
     let merged=0,mergedInstances=0;
     for(const members of groups.values()){
       if(members.length<2)continue;
       const first=members[0];
-      // A copy that sits at the top of the field has no parent of its own,
-      // so the merged mesh is attached to the field root.
-      const parent=first.parent??root;
+      const parent=root;
       let total=0;
       for(const member of members)total+=member.isInstancedMesh?member.count:1;
       const instanced=new THREE.InstancedMesh(first.geometry,first.material,total);
@@ -116,11 +158,11 @@ export async function createScene(canvas,{onReady,onFallback}){
         if(member.isInstancedMesh){
           for(let slot=0;slot<member.count;slot++){
             member.getMatrixAt(slot,local);
-            matrix.multiplyMatrices(member.matrixWorld,local);
+            matrix.multiplyMatrices(member.matrixWorld,local).premultiply(toRoot);
             instanced.setMatrixAt(index++,matrix);
           }
         }else{
-          matrix.copy(member.matrixWorld);
+          matrix.multiplyMatrices(toRoot,member.matrixWorld);
           instanced.setMatrixAt(index++,matrix);
         }
         member.removeFromParent();
@@ -200,7 +242,10 @@ export async function createScene(canvas,{onReady,onFallback}){
       robot.updateWorldMatrix(true,true);camera.updateMatrixWorld();
       let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;const point=new THREE.Vector3();
       robot.traverse(object=>{if(!object.isMesh)return;if(!object.geometry.boundingBox)object.geometry.computeBoundingBox();const b=object.geometry.boundingBox;for(const x of [b.min.x,b.max.x])for(const y of [b.min.y,b.max.y])for(const z of [b.min.z,b.max.z]){point.set(x,y,z).applyMatrix4(object.matrixWorld).project(camera);minX=Math.min(minX,point.x);maxX=Math.max(maxX,point.x);minY=Math.min(minY,point.y);maxY=Math.max(maxY,point.y)}});
-      const desiredY=isMobile?-.08:.09;framing={x:(minX+maxX)*innerWidth/4,y:(desiredY-(minY+maxY)/2)*innerHeight/2};framingDirty=false;
+      // A point behind the camera or a zero-sized viewport projects to NaN,
+      // and a NaN view offset blanks the whole frame, so it falls back to 0.
+      const desiredY=isMobile?-.08:.09,fx=(minX+maxX)*innerWidth/4,fy=(desiredY-(minY+maxY)/2)*innerHeight/2;
+      framing={x:Number.isFinite(fx)?fx:0,y:Number.isFinite(fy)?fy:0};framingDirty=!(innerWidth>0&&innerHeight>0);
     }
     const framingWeight=1-between(progress,.12,.24);if(framingWeight>0)camera.setViewOffset(innerWidth,innerHeight,framing.x*framingWeight,framing.y*framingWeight,innerWidth,innerHeight);
     const alpha=frame.field;field.visible=alpha>.002;
@@ -209,7 +254,10 @@ export async function createScene(canvas,{onReady,onFallback}){
     // only the surfaces that are really see through stay transparent.
     for(const [material,original]of fieldMaterials){
       if(original.seeThrough){material.opacity=original.opacity*alpha;material.transparent=true;material.depthWrite=false;}
-      else{material.transparent=alpha<.999&&alpha>0;material.opacity=1;material.depthWrite=alpha>.9;}
+      // Opaque surfaces fade with the crossfade too; held at full opacity the
+      // field stayed solid until it vanished, and the closing camera sat
+      // inside it with the A-frame across the closing text.
+      else{const fading=alpha<.999;material.transparent=fading;material.opacity=fading?alpha:1;material.depthWrite=alpha>.9;}
     }
     // The field is a large asset, so it is fetched only when the timeline is
     // about to show it instead of at first paint.
