@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "glb_bytes": 3335088,
+  "source_node_names_preserved": 568,
+  "source_mesh_nodes_compared": 174,
+  "source_positions_normals_indices_exactly_equal": true,
+  "source_internal_transforms_exactly_equal": true,
+  "web_total_mesh_nodes": 228,
+  "web_inferred_mesh_nodes": 54,
+  "inferred_triangles": 42630,
+  "total_triangles": 294104,
+  "required_groups": [
+    "SOURCE_SHOOTER",
+    "INFERRED_CHASSIS",
+    "INFERRED_DRIVETRAIN",
+    "INFERRED_INTAKE",
+    "INFERRED_INDEXER"
+  ],
+  "moving_groups": [
+    "INFERRED_WHEEL_L_FRONT",
+    "INFERRED_WHEEL_L_REAR",
+    "INFERRED_WHEEL_R_FRONT",
+    "INFERRED_WHEEL_R_REAR",
+    "INFERRED_INTAKE_ROLLER_FRONT",
+    "INFERRED_INTAKE_ROLLER_TRANSFER"
+  ],
+  "polycarbonate_alpha_mode": "BLEND",
+  "polycarbonate_alpha": 0.2199999988079071,
+  "roundtrip_dimensions_gltf_m": [
+    0.421999990940094,
+    0.32940593361854553,
+    0.4323495328426361
+  ],
+  "ground_y_zero": true,
+  "footprint_centered": true,
+  "limits": [
+    "Inferred visual integration is not engineering, game-rule, clearance or kinematic validation.",
+    "Browser/WebGL rendering and interactive behavior are validated separately by the page owner."
+  ]
+}

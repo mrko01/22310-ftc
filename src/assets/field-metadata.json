@@ -1,0 +1,91 @@
+{
+  "hives": [
+    {
+      "name": "HIVE_RED",
+      "pivot": [
+        -0.323637681,
+        1.116322389,
+        0
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "restRotation": [
+        0,
+        0,
+        0
+      ],
+      "bounds": [
+        -0.5932298849873052,
+        0.778530891928784,
+        -0.6398390107977423,
+        -0.05404547704687782,
+        1.6796204860257924,
+        0.5096463621824381
+      ],
+      "localBounds": [
+        -0.2695922039873052,
+        -0.33779149707121603,
+        -0.6398390107977423,
+        0.26959220395312217,
+        0.5632980970257924,
+        0.5096463621824381
+      ],
+      "source": "am-5853-Red Hive <1>",
+      "pivotEvidence": "Common axis of paired F608ZZ bearing centers and 1.5in stepped spacer in official CAD"
+    },
+    {
+      "name": "HIVE_BLUE",
+      "pivot": [
+        0.324062319,
+        1.116322389,
+        0
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "restRotation": [
+        0,
+        0,
+        0
+      ],
+      "bounds": [
+        0.05447011501269555,
+        0.778530891928785,
+        -0.5096463621789961,
+        0.5936545229531188,
+        1.6796204860258124,
+        0.6398390108012249
+      ],
+      "localBounds": [
+        -0.26959220398730444,
+        -0.33779149707121503,
+        -0.5096463621789961,
+        0.26959220395311884,
+        0.5632980970258123,
+        0.6398390108012249
+      ],
+      "source": "am-5853-Blue Hive <1>",
+      "pivotEvidence": "Common axis of paired F608ZZ bearing centers and 1.5in stepped spacer in official CAD"
+    }
+  ],
+  "floorY": 0,
+  "frameKeepout": [
+    -0.628387121,
+    -0.021276303,
+    -0.494711462,
+    0.628763759,
+    1.125597585,
+    0.494711462
+  ],
+  "startingPiecesGroup": "STARTING_PIECES",
+  "nativeStartingPieces": 56,
+  "units": "metres",
+  "upAxis": "Y",
+  "sourceVersion": "v26-27.2 (FIRST field resource page, September 15, 2026)",
+  "sourceUrl": "https://ftc-resources.firstinspires.org/ftc/archive/2027/field/field-cad-step"
+}

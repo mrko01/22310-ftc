@@ -1,0 +1,47 @@
+{
+  "status": "Validated display LOD integrated into the site",
+  "assets": [
+    {
+      "path": "field-pipeline/field-lod.glb",
+      "bytes": 16605508,
+      "sha256": "29717892cd8b39db643370d40a741fdb026b7c70ff6cccd55cb293ad97ad03ef"
+    },
+    {
+      "path": "field-pipeline/field-lod-compressed.glb",
+      "bytes": 8690168,
+      "sha256": "b03a4c8ff3429532c88ef200fcd3f046d49f3faf54d3cd0efd1262283fbb5383"
+    }
+  ],
+  "counts": {
+    "unique": 638374,
+    "rendered": 3337458,
+    "instances": 993
+  },
+  "source_counts": {
+    "unique": 1269778,
+    "rendered": 6695482,
+    "instances": 993
+  },
+  "sample_count": 3147951,
+  "max_sampled_bidirectional_deviation_m": 0.00009779958215000736,
+  "samples_above_0_1mm": 0,
+  "node_transform_and_bounds_pass": true,
+  "lossless_compression_pass": true,
+  "four_view_silhouette_pass": true,
+  "preserved_source_meshes": [
+    "0:1:1:52_0",
+    "0:1:1:53_0",
+    "0:1:1:54_0",
+    "0:1:1:63_0",
+    "0:1:1:67_0",
+    "0:1:1:69_0",
+    "0:1:1:84_0",
+    "0:1:1:86_0",
+    "0:1:1:121_0"
+  ],
+  "limits": [
+    "Nearest-surface validation samples every vertex and triangle centroid in both directions; it is not a continuous Hausdorff proof.",
+    "Four-view silhouettes check visible outer silhouette, not occluded/internal geometry.",
+    "Validation is against the source tessellated GLB, not an independent analytic STEP B-rep tolerance certification."
+  ]
+}

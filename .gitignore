@@ -1,0 +1,12 @@
+
+node_modules/
+bundle-report.json
+review/
+.env
+.env *
+.claude/
+.local-backup/
+.wrangler/
+# Finder/iCloud conflict copies ("name 2.ext")
+* [0-9]
+* [0-9].*

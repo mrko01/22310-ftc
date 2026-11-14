@@ -1,0 +1,43 @@
+# Assets and sources
+- BIOBUZZ official FTC lockup: https://www.firstinspires.org/hubfs/web/brand/season/2027/downloads/first-biobuzz-logos.zip (Digital RGB/first_canopy_ftc_biobuzz_logo_vertical_rgb_fullcolor.png). Used unchanged, including sponsor and clear space.
+- Season identity: https://www.firstinspires.org/programs/ftc/game-and-season
+- Brand guidance: https://www.firstinspires.org/hubfs/web/brand/season/2027/downloads/ftc-biobuzz-styleguide.pdf
+- DM Sans font: @fontsource/dm-sans, SIL Open Font License.
+- Roster: user-provided orange EDIT Saffron team table (2026-09-15). Names and disciplines are retained from the supplied roster; no invented members or roles.
+- Mascot: original procedural red comic robot character created for the website. It does not depict a built competition robot. Rendered using Three.js (MIT license).
+
+- Number logo: original image generated with the built-in image generation tool. Final asset `dist/assets/22310-logo.png`; prompt: a solid saffron-orange square with precisely centered bold condensed charcoal “22310”, no extra symbols, text, texture or effects. Favicon and touch-icon derivatives are resized versions.
+- Interactive scene: original standing mascot and rover companion, sharing a common floor; rover uses varied, bounded routes with eased starts and stops. Reduced motion and the pause control stop ambient animation. Scroll chapters blend greeting, design-board, open-arm, curious and farewell poses across the upper-body joints. The rover has limited head rotation and a shared ground height.
+
+## Build and deployment
+`npm ci && npm run build` bundles and minifies the editable `src/scene/mascot.js` source and local Three.js dependencies into `dist/assets/mascot.bundle.js`. Cloudflare Pages serves the checked-in `dist` folder. Both public and private sites remain separate deployments. Public calendar events must be explicitly marked “Show on 22310.ca” in the authenticated calendar.
+
+## SEO
+Each public page has a unique title/description, canonical, Open Graph and Twitter preview, structured Organization/WebSite/page data, and semantic headings. `sitemap.xml` contains the canonical public pages. A real 404 page prevents unknown routes being indexed as duplicate homepages. The team workspace is noindex. No ranking or indexing time is guaranteed.
+
+- Final scene props: original schematic board held between the mascot’s hands, rear-mounted parts box on the rover, and a low ramp. Wheel contact uses the same height function as the ramp geometry. Joint transitions use critically damped, speed-limited motion, with active clocks that stop when hidden and cache-versioned atomic bundles.
+- Validation: `npm test` checks fast section changes at 20/30/60/120 fps, transition overshoot, rover clearance, route continuity and ramp height. Public metadata, local assets and CSP hashes were also checked.
+
+- Rover tricks: low ramp in the right lane and a controlled full turn in the left lane. Quintic acceleration/deceleration, opposing wheel speeds during turns, and individual wheel-height compensation keep motion grounded. Both maneuvers clear the mascot footprint; the props reuse existing materials.
+
+## September 2026 public redesign
+- Sponsorship source: [Lo-Ellen Robotics sponsorship package](https://docs.google.com/presentation/d/1oGsSP_7ACpBvWPNOVP26FnDXzV3fG_IkUBOh9UIbEUo/edit?usp=sharing), read directly through the connected Google Drive on 2026-09-29. Support pathways follow slide 14; recognition examples follow slides 15–19, with their dependence on sponsorship level retained. No pricing, new sponsor commitments, or Saffron-specific awards were inferred.
+- Program photographs come from the user-requested [Lo-Ellen Robotics website gallery](https://loellenrobotics.ca/loellenrobotics/#gallery), accessed 2026-09-29, and the five original EDIT photographs subsequently supplied by the user in this conversation. Three supplied originals were selected for the existing photo placements; no extra gallery or page sections were added. These images show the wider Lo-Ellen program and are not labelled as Saffron’s current roster or robot.
+  - `src/assets/lo-ellen-pit-work-{800,1600}.webp`: user-supplied `codex-clipboard-1f598e84-4776-4d33-849b-aaa92d80e6fa.png` (6000 × 4000), FRC Team 4069 working on its robot in the competition pit. Used on the home-page support feature. The same photograph is also [gallery image 5](https://loellenrobotics.ca/loellenrobotics/media/Gallery/image5.jpg), but the supplied PNG is the encoding source.
+  - `src/assets/lo-ellen-team-at-competition-{800,1600}.webp`: user-supplied `codex-clipboard-3ba3f226-065f-4f81-9576-c24261eaa004.png` (6000 × 4000), the team gathered around robot 4069 at competition. Used on the team-page hero and captioned as FRC 4069 in the wider Lo-Ellen program. Also appears as [gallery image 8](https://loellenrobotics.ca/loellenrobotics/media/Gallery/image8.jpg).
+  - `src/assets/lo-ellen-robot-detail-{800,1600}.webp`: user-supplied `codex-clipboard-b95f880b-50fc-4b6d-bcf0-0f18dec48963.png` (6000 × 4000), robot mechanism and sponsor-panel detail. Used on the sponsor hero and identified as FRC 4069’s competition robot. Also appears as [gallery image 4](https://loellenrobotics.ca/loellenrobotics/media/Gallery/image4.jpg).
+  - `src/assets/lo-ellen-practice-{800,1600}.webp`: [gallery image 12](https://loellenrobotics.ca/loellenrobotics/media/Gallery/image12.jpg), students around an FTC practice field in the workshop. Retained for the sponsor-page EDIT Lab section so a competition venue is not described as the lab.
+  - The supplied celebration and drivers photos were inspected but not used; their visible photographer/FIRST watermarks remain untouched. All selected originals were EXIF-oriented, proportionally resized, and WebP-encoded for responsive delivery, without retouching, compositing, or removing credits. Display crops use CSS `object-fit` only. Captions link to the Lo-Ellen program gallery. Earlier slide-extracted photographs have been removed.
+- Program and EDIT Lab description follows slides 2 and 4. The public copy distinguishes the wider Lo-Ellen program from FTC Team 22310. The current package remains the source for sponsorship levels and arrangements.
+
+## October 2026 title sponsor
+- Agnico Eagle title sponsorship of FTC Team 22310 and Lo-Ellen Robotics was supplied directly by the user on 2026-10-08. No contribution amount is published.
+- `src/assets/agnico-eagle-logo.png` is the unchanged `AGNICO_EAGLE_Pos_PMS.png` (1000 × 480) from the [official Agnico Eagle logo download](https://s205.q4cdn.com/243646470/files/doc_downloads/Agnico_Eagle_Logos.zip), linked from [Agnico Eagle's media resources](https://www.agnicoeagle.com/English/news-and-media/media-resources/our-logos/default.aspx). The official colour artwork is shown on a light surface with clear space. Every sponsor logo links to the homepage supplied by the user.
+
+## November 2026 redesign ("precision in bloom")
+- Design system: `src/styles/tokens.css` (graphite + saffron palette, type scale, motion), shared by every page and mirrored in the team workspace.
+- Fonts (self-hosted, SIL Open Font License 1.1): Archivo variable (wght 100–900, wdth 62–125) from `@fontsource-variable/archivo` → `src/assets/archivo-var.woff2`; JetBrains Mono 400/500 from `@fontsource/jetbrains-mono` → `src/assets/jetbrains-mono-*.woff2`. Neuropol is retained for the 22310 numerals only.
+- Homepage: one WebGL stage (`src/experience/stage.js`) driven by a scroll director (`src/experience/main.js`, GSAP ScrollTrigger + Lenis, both MIT/standard licence). Robot and field geometry are unchanged; the blueprint scan, exploded view, field reveal ring and "22310" particle numerals are shader effects. The 1.6 MB studio HDR is no longer downloaded; lighting uses Three.js `RoomEnvironment`.
+- Line illustrations (`src/svgs.mjs`): original, generated at build time.
+- Caching: every `/assets/` URL is content-hashed at build (`?v=`), assets are served `immutable` for a year, and HTML revalidates normally. The former `Clear-Site-Data: "cache"` and `no-store` headers were removed — they forced browsers to wipe their cache and re-download everything on every visit, which made the homepage take ~15 s to appear on real machines.
+- Finder/iCloud conflict copies (`name 2.ext`) and retired assets are excluded from `dist` by the build.
