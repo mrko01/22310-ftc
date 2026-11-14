@@ -15,4 +15,4 @@ export function sponsorCredit(className) {
   return `<div class="sponsor-credit ${className}"><span class="sponsor-label">Title sponsor</span>${sponsorLogo()}</div>`;
 }
 
-export const sponsorFeature = `<header class="title-sponsor-feature" id="title-sponsor"><div class="section-inner title-sponsor-layout"><div class="title-sponsor-copy"><p class="section-label"><span class="idx">[03]</span><span>Title sponsor</span></p><h1>Agnico Eagle.</h1><p>Supporting FTC Team 22310<br>and Lo-Ellen Robotics.</p><p class="sponsor-thanks">Thank you for helping our students<br>build, learn, and compete.</p></div>${sponsorLogo('title-sponsor-logo', true)}</div></header>`;
+export const sponsorFeature = `<header class="title-sponsor-feature" id="title-sponsor"><div class="section-inner title-sponsor-layout"><div class="title-sponsor-copy"><h1>Agnico Eagle</h1><p>Title sponsor of FTC Team 22310 and Lo-Ellen Robotics.</p><p class="sponsor-thanks">Thank you for helping our students<br>build, learn, and compete.</p></div>${sponsorLogo('title-sponsor-logo', true)}</div></header>`;

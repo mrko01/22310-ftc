@@ -10,7 +10,11 @@
     "sync:experience": "node scripts/sync-experience.mjs"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
     "esbuild": "^0.25.0",
+    "meshoptimizer": "^1.3.0",
     "playwright": "^1.63.0",
     "wrangler": "^4.151.1"
   },

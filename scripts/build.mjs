@@ -67,7 +67,7 @@ for(const [path,page]of Object.entries(pages)){
   const home=path==='';
   const styles=home?`<link rel="stylesheet" href="/assets/home.css?v=${homeCSSHash}">`:`<link rel="stylesheet" href="/assets/site.css?v=${cssHash}">`;
   const script=home?experienceEntry:'/assets/site.js?v='+jsHash;
-  const preload=home?`<link rel="modulepreload" href="${experienceEntry}"><link rel="preload" href="/assets/robot.glb" as="fetch" crossorigin>`:'';
+  const preload=home?`<link rel="modulepreload" href="${experienceEntry}"><link rel="preload" href="/assets/robot.glb" as="fetch" crossorigin media="(min-width: 801px) and (pointer: fine)"><link rel="preload" href="/assets/robot-mobile.glb" as="fetch" crossorigin media="(max-width: 800px), (pointer: coarse)">`:'';
   const url=pageUrl(path);
   const schema=schemaJSON(structuredData(path,page));
   cspHashes.push("'sha256-"+createHash('sha256').update(schema).digest('base64')+"'");

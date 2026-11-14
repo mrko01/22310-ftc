@@ -41,3 +41,8 @@ Each public page has a unique title/description, canonical, Open Graph and Twitt
 - Line illustrations (`src/svgs.mjs`): original, generated at build time.
 - Caching: every `/assets/` URL is content-hashed at build (`?v=`), assets are served `immutable` for a year, and HTML revalidates normally. The former `Clear-Site-Data: "cache"` and `no-store` headers were removed — they forced browsers to wipe their cache and re-download everything on every visit, which made the homepage take ~15 s to appear on real machines.
 - Finder/iCloud conflict copies (`name 2.ext`) and retired assets are excluded from `dist` by the build.
+
+## November 2026 robot model (team CAD)
+- Source: the team's Fusion design "Robot Assembly v4", shared at https://a360.co/4BKs94b (accessed 2026-11-14). Geometry, part placements, appearance colours and the five top-level assemblies (Shooter, Intake, Indexer, Drivebase, Sensors) were exported from the Autodesk viewer of that share into `scripts/robot-sources/saffron-robot-cad.bin` (10.3 M triangles across 2,315 parts).
+- `node scripts/build-robot-cad.mjs` turns that export into `src/assets/robot.glb` (desktop, ~490k triangles) and `src/assets/robot-mobile.glb` (~190k): metres, standing on the ground with the intake facing +Z, one node per assembly, one primitive per CAD colour, error-bounded simplification and creased normals, meshopt compression. Re-run it after exporting a newer version of the design.
+- The homepage copy no longer describes any part as a stand-in: every part shown is from the team's CAD.
