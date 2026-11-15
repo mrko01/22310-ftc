@@ -2,6 +2,9 @@ import {readFileSync,existsSync} from 'node:fs';
 import {pages} from '../src/pages.mjs';
 const files=new Map(Object.keys(pages).map(path=>[path==='404'?'/404.html':'/'+(path?path+'/':''),path==='404'?'dist/404.html':'dist/'+(path?path+'/':'')+'index.html']));
 const errors=[];
+// Routes on 22310.ca served by other deployments, not this Pages build:
+// /kosim/ is the Kosim BIOBUZZ simulator, a separate Cloudflare Worker routed at 22310.ca/kosim*.
+const external=['/kosim/'];
 const read=path=>readFileSync(path,'utf8');
 for(const [route,file] of files){
   const html=read(file),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -12,6 +15,7 @@ for(const [route,file] of files){
     if(raw.startsWith('mailto:')&&!html.includes('<!--email_off--><a'))errors.push(route+': direct email fallback is missing Cloudflare protection');
     if(/^(https?:|mailto:|data:)/.test(raw))continue;
     const url=new URL(raw.replaceAll('&amp;','&'),'https://22310.ca'+route);
+    if(external.some(p=>url.pathname.startsWith(p)))continue;
     const target=url.pathname.endsWith('/')?'dist'+url.pathname+'index.html':'dist'+url.pathname;
     if(!existsSync(target)){errors.push(route+': missing '+url.pathname);continue;}
     if(url.hash&&target.endsWith('.html')){const anchor=decodeURIComponent(url.hash.slice(1));if(!read(target).includes('id="'+anchor+'"'))errors.push(route+': missing anchor '+raw);}

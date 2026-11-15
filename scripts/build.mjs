@@ -61,12 +61,17 @@ const cssBundle=async(files,out)=>{const result=await build({stdin:{contents:fil
 await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/styles/home.css'],'dist/assets/home.css');
 await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/styles/pages.css'],'dist/assets/site.css');
 await build({entryPoints:['src/site.js'],outfile:'dist/assets/site.js',bundle:true,format:'esm',minify:true,target:'es2022'});
+// Minex (the Sudbury mining simulator at /minex/) ships its own script and styles.
+await build({entryPoints:['src/minex/main.js'],outfile:'dist/assets/minex.js',bundle:true,format:'esm',minify:true,target:'es2022'});
+await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/minex/minex.css'],'dist/assets/minex.css');
 const cssHash=hash(readFileSync('dist/assets/site.css')),jsHash=hash(readFileSync('dist/assets/site.js')),homeCSSHash=hash(readFileSync('dist/assets/home.css'));
+const bundles={minex:{css:'/assets/minex.css?v='+hash(readFileSync('dist/assets/minex.css')),js:'/assets/minex.js?v='+hash(readFileSync('dist/assets/minex.js'))}};
 const cspHashes=[];
 for(const [path,page]of Object.entries(pages)){
   const home=path==='';
-  const styles=home?`<link rel="stylesheet" href="/assets/home.css?v=${homeCSSHash}">`:`<link rel="stylesheet" href="/assets/site.css?v=${cssHash}">`;
-  const script=home?experienceEntry:'/assets/site.js?v='+jsHash;
+  const own=page.bundle&&bundles[page.bundle];
+  const styles=home?`<link rel="stylesheet" href="/assets/home.css?v=${homeCSSHash}">`:own?`<link rel="stylesheet" href="${own.css}">`:`<link rel="stylesheet" href="/assets/site.css?v=${cssHash}">`;
+  const script=home?experienceEntry:own?own.js:'/assets/site.js?v='+jsHash;
   const preload=home?`<link rel="modulepreload" href="${experienceEntry}"><link rel="preload" href="/assets/robot.glb" as="fetch" crossorigin media="(min-width: 801px) and (pointer: fine)"><link rel="preload" href="/assets/robot-mobile.glb" as="fetch" crossorigin media="(max-width: 800px), (pointer: coarse)">`:'';
   const url=pageUrl(path);
   const schema=schemaJSON(structuredData(path,page));
@@ -82,6 +87,6 @@ const publicPages=Object.entries(pages).filter(([path])=>path!=='404');
 writeFileSync('dist/robots.txt',`# EDIT Saffron's public website is intentionally crawlable, including by AI search and assistant crawlers.\nUser-agent: *\nAllow: /\n\nSitemap: ${site.url}sitemap.xml\n`);
 writeFileSync('dist/sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${publicPages.map(([path])=>`<url><loc>${pageUrl(path)}</loc></url>`).join('')}</urlset>\n`);
 writeFileSync('dist/llms.txt',`# ${site.name}\n\n> ${site.description}\n\n${site.name} is an independent FIRST® Tech Challenge robotics team based at ${site.school} in ${site.city}, ${site.region}. The public site covers the team's students, engineering disciplines, competition calendar, outreach, and contact information.\n\n## Public pages\n\n${publicPages.map(([path,page])=>`- [${page.title.replace(' · EDIT Saffron','')}](${pageUrl(path)}): ${page.description}`).join('\n')}\n\n## Public-site scope\n\nThis file describes only the public website at ${site.url}. Use the linked pages as the source of truth for current public information.\n`);
-writeFileSync('dist/_redirects','/sponsors/brief/ /sponsors/ 301\n/sponsors/brief /sponsors/ 301\n/assets/saffron-partnership-brief.pdf /sponsors/ 301\n');
+writeFileSync('dist/_redirects','/minex /minex/ 301\n/sponsors/brief/ /sponsors/ 301\n/sponsors/brief /sponsors/ 301\n/assets/saffron-partnership-brief.pdf /sponsors/ 301\n');
 writeFileSync('dist/_headers',`/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Language: en-CA\n  X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com ${cspHashes.join(' ')}; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca https://cloudflareinsights.com https://static.cloudflareinsights.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/robots.txt\n  Cache-Control: public, max-age=3600\n/sitemap.xml\n  Cache-Control: public, max-age=3600\n/llms.txt\n  Cache-Control: public, max-age=3600\n/404.html\n  X-Robots-Tag: noindex\n`);
-for(const name of ['site.js','site.css','home.css']){const bytes=readFileSync('dist/assets/'+name);console.log(name+': '+(bytes.length/1024).toFixed(1)+' KB / '+(gzipSync(bytes).length/1024).toFixed(1)+' KB gzip');}
+for(const name of ['site.js','site.css','home.css','minex.js','minex.css']){const bytes=readFileSync('dist/assets/'+name);console.log(name+': '+(bytes.length/1024).toFixed(1)+' KB / '+(gzipSync(bytes).length/1024).toFixed(1)+' KB gzip');}
