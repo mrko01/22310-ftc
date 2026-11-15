@@ -62,10 +62,12 @@ await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/styles/home.
 await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/styles/pages.css'],'dist/assets/site.css');
 await build({entryPoints:['src/site.js'],outfile:'dist/assets/site.js',bundle:true,format:'esm',minify:true,target:'es2022'});
 // Minex (the Sudbury mining simulator at /minex/) ships its own script and styles.
-await build({entryPoints:['src/minex/main.js'],outfile:'dist/assets/minex.js',bundle:true,format:'esm',minify:true,target:'es2022'});
+// three.js is split into its own chunk and loaded after first paint.
+const minex=await build({entryPoints:{minex:'src/minex/main.js'},outdir:'dist/assets/minex',bundle:true,splitting:true,format:'esm',minify:true,target:'es2022',entryNames:'[name]-[hash]',chunkNames:'chunk-[hash]',metafile:true});
+const minexEntry=Object.entries(minex.metafile.outputs).find(([,o])=>o.entryPoint==='src/minex/main.js')[0].replace(/^dist/,'');
 await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/minex/minex.css'],'dist/assets/minex.css');
 const cssHash=hash(readFileSync('dist/assets/site.css')),jsHash=hash(readFileSync('dist/assets/site.js')),homeCSSHash=hash(readFileSync('dist/assets/home.css'));
-const bundles={minex:{css:'/assets/minex.css?v='+hash(readFileSync('dist/assets/minex.css')),js:'/assets/minex.js?v='+hash(readFileSync('dist/assets/minex.js'))}};
+const bundles={minex:{css:'/assets/minex.css?v='+hash(readFileSync('dist/assets/minex.css')),js:minexEntry}};
 const cspHashes=[];
 for(const [path,page]of Object.entries(pages)){
   const home=path==='';
@@ -89,4 +91,4 @@ writeFileSync('dist/sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlse
 writeFileSync('dist/llms.txt',`# ${site.name}\n\n> ${site.description}\n\n${site.name} is an independent FIRST® Tech Challenge robotics team based at ${site.school} in ${site.city}, ${site.region}. The public site covers the team's students, engineering disciplines, competition calendar, outreach, and contact information.\n\n## Public pages\n\n${publicPages.map(([path,page])=>`- [${page.title.replace(' · EDIT Saffron','')}](${pageUrl(path)}): ${page.description}`).join('\n')}\n\n## Public-site scope\n\nThis file describes only the public website at ${site.url}. Use the linked pages as the source of truth for current public information.\n`);
 writeFileSync('dist/_redirects','/minex /minex/ 301\n/sponsors/brief/ /sponsors/ 301\n/sponsors/brief /sponsors/ 301\n/assets/saffron-partnership-brief.pdf /sponsors/ 301\n');
 writeFileSync('dist/_headers',`/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Language: en-CA\n  X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com ${cspHashes.join(' ')}; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://team.22310.ca wss://team.22310.ca https://cloudflareinsights.com https://static.cloudflareinsights.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/robots.txt\n  Cache-Control: public, max-age=3600\n/sitemap.xml\n  Cache-Control: public, max-age=3600\n/llms.txt\n  Cache-Control: public, max-age=3600\n/404.html\n  X-Robots-Tag: noindex\n`);
-for(const name of ['site.js','site.css','home.css','minex.js','minex.css']){const bytes=readFileSync('dist/assets/'+name);console.log(name+': '+(bytes.length/1024).toFixed(1)+' KB / '+(gzipSync(bytes).length/1024).toFixed(1)+' KB gzip');}
+for(const name of ['site.js','site.css','home.css','minex.css',minexEntry.replace('/assets/','')]){const bytes=readFileSync('dist/assets/'+name);console.log(name+': '+(bytes.length/1024).toFixed(1)+' KB / '+(gzipSync(bytes).length/1024).toFixed(1)+' KB gzip');}

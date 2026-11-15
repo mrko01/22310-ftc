@@ -1,68 +1,60 @@
-// Minex page entry: site chrome, the landing page and launching the game.
-import {initChrome,initMagnetic} from '../chrome.js';
-import {MINERALS,ZONES,mineralIndex} from './data.js';
-import {createGame,loadSave,fmtDepth} from './game.js';
-import {createUI,openSheet,mineralDetailHTML,paintSpecimens,paintSwatches,closeSheet} from './ui.js';
-import {createStrata} from './strata.js';
-import {sound} from './audio.js';
+// Minex: scroll is depth. Each scene is one stop on the way down.
+import {initChrome} from '../chrome.js';
+import {LAYERS,layerAt} from './data.js';
 
 const html=document.documentElement;html.classList.remove('no-js');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-initChrome();initMagnetic();
+initChrome();
 
-// ---------- reveal on scroll ----------
-if(!reduced.matches&&'IntersectionObserver' in window){
-  html.classList.add('motion-ready');
-  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('is-visible');io.unobserve(e.target);}}),{threshold:.12,rootMargin:'0px 0px -6% 0px'});
-  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+const scenes=[...document.querySelectorAll('.mx-scene')];
+const depths=scenes.map(s=>+s.dataset.depth);
+const num=document.querySelector('[data-depth]'),sky=document.querySelector('.mx-sky'),rail=document.querySelector('.mx-rail'),marks=rail.querySelector('[data-marks]'),fill=rail.querySelector('.mx-rail-fill'),now=rail.querySelector('.mx-rail-now');
+const MAX=3000,fmt=d=>Math.round(Math.max(0,d)).toLocaleString('en-CA').replace(/,/g,' ');
+
+// Depth for the current scroll position, interpolated between the two nearest scenes.
+function targetDepth(){
+  const y=scrollY;let i=0;while(i<scenes.length-1&&scenes[i+1].offsetTop<=y)i++;
+  if(i>=scenes.length-1)return depths[depths.length-1];
+  const a=scenes[i].offsetTop,b=scenes[i+1].offsetTop,f=Math.max(0,Math.min(1,(y-a)/(b-a||1)));
+  return depths[i]+(depths[i+1]-depths[i])*f;
 }
-requestAnimationFrame(()=>html.classList.add('mx-loaded'));
+const activeIndex=()=>{const mid=scrollY+innerHeight*.5;let i=0;scenes.forEach((s,k)=>{if(s.offsetTop<=mid)i=k;});return i;};
 
-// ---------- strata background + depth readout ----------
-const depthBar=document.querySelector('.mx-depthbar'),depthText=depthBar?.querySelector('[data-page-depth]'),zoneText=depthBar?.querySelector('[data-page-zone]');
-const layerLinks=[...document.querySelectorAll('[data-layer-link]')];
-let lastZone=-2;
-const strata=createStrata(document.querySelector('.mx-strata'),{onDepth(d){
-  if(!depthBar)return;depthText.textContent=fmtDepth(d)+' m';depthBar.classList.toggle('on',scrollY>innerHeight*.6);
-  let k=-1;ZONES.forEach((z,i)=>{if(d>=z.from&&d>0)k=i;});
-  if(k!==lastZone){lastZone=k;zoneText.textContent=k<0?'Surface':`${ZONES[k].num} · ${ZONES[k].name}`;layerLinks.forEach((a,i)=>a.classList.toggle('active',i===k));}
-}});
-
-// ---------- field guide on the page ----------
-const cards=[...document.querySelectorAll('[data-mineral]')];
-cards.forEach(c=>{const m=MINERALS[mineralIndex[c.dataset.mineral]];const bar=c.querySelector('.mx-spec-h i');if(bar){bar.style.left=((m.h[0]-1)/9*100)+'%';bar.style.width=Math.max(3,(m.h[1]-m.h[0])/9*100)+'%';}});
-const paintIO='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){paintSpecimens(e.target);paintIO.unobserve(e.target);}}),{rootMargin:'200px'}):null;
-cards.forEach(c=>paintIO?paintIO.observe(c):paintSpecimens(c));
-function syncCollected(){const s=loadSave();cards.forEach(c=>c.classList.toggle('collected',!!s?.found?.m?.[c.dataset.mineral]));}
-syncCollected();
-cards.forEach(c=>c.addEventListener('click',()=>{const m=MINERALS[mineralIndex[c.dataset.mineral]];const s=loadSave();const body=openSheet(mineralDetailHTML(m,{count:s?.found?.m?.[m.key]||0}),{wide:true,kind:'entry'});paintSpecimens(body);paintSwatches(body);}));
-const chips=[...document.querySelectorAll('[data-filter]')];
-chips.forEach(ch=>ch.addEventListener('click',()=>{const f=ch.dataset.filter;chips.forEach(c=>c.setAttribute('aria-pressed',String(c===ch)));
-  cards.forEach(c=>{const show=f==='all'||c.dataset.group===f;c.hidden=!show;});
-  const live=document.querySelector('#mx-guide-count');if(live)live.textContent=`${cards.filter(c=>!c.hidden).length} minerals shown`;}));
-
-// ---------- the game ----------
-const root=document.querySelector('#minex-game');
-let game=null,ui=null,opener=null,pushed=false;
-function playLabel(){const s=loadSave();document.querySelectorAll('[data-play-label]').forEach(el=>{el.textContent=s&&s.stats?.dug?`Continue · ${fmtDepth(s.deepest)} m`:el.dataset.playLabel;});}
-playLabel();
-function openGame(fromHistory){
-  if(!root||!root.hidden)return;
-  opener=document.activeElement;sound.unlock();strata.pause();
-  root.hidden=false;html.classList.add('mx-playing');
-  if(!ui){ui=createUI(root,{game:()=>game,exit:()=>closeGame()});game=createGame(root,ui);}
-  game.start();
-  if(!fromHistory){history.pushState({minex:'play'},'',location.pathname+location.search+'#play');pushed=true;}
-  if(!game.state.intro)setTimeout(()=>ui.openIntro(),reduced.matches?0:350);
-  root.querySelector('.mx-canvas').focus?.({preventScroll:true});
+// Rail marks appear only for what you have already passed: no spoilers.
+const passed=new Map();
+function mark(id,depth,label,kind){
+  if(passed.has(id))return;const m=document.createElement('span');m.className='mx-mark mx-mark-'+kind;m.style.top=(Math.max(0,depth)/MAX*100)+'%';m.innerHTML=`<i></i><b></b>`;m.querySelector('b').textContent=label;marks.append(m);passed.set(id,m);requestAnimationFrame(()=>m.classList.add('in'));
 }
-function closeGame(fromHistory){
-  if(!root||root.hidden)return;
-  closeSheet();game.stop();root.hidden=true;html.classList.remove('mx-playing');strata.resume();playLabel();syncCollected();
-  if(!fromHistory&&pushed&&location.hash==='#play'){pushed=false;history.back();}
-  else if(!fromHistory&&location.hash==='#play')history.replaceState(null,'',location.pathname+location.search);
-  opener?.focus?.({preventScroll:true});
+function syncMarks(d){
+  LAYERS.forEach(l=>{if(d>=l.from+1)mark('l-'+l.id,l.from,l.name,'layer');});
+  const active=d>=1?passed.get('l-'+layerAt(d).id):null;
+  passed.forEach(m=>m.classList.toggle('on',m===active));
 }
-document.querySelectorAll('[data-play]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();openGame();}));
-addEventListener('popstate',()=>{if(location.hash==='#play')openGame(true);else closeGame(true);});
-if(location.hash==='#play')openGame(true);
+
+let stage=null,shown=-1,depth=depths[0],last=performance.now(),started=false;
+function show(i){
+  if(i===shown)return;shown=i;
+  scenes.forEach((s,k)=>s.classList.toggle('is-on',k===i));
+  stage?.show(scenes[i].dataset.specimen||null);
+  if(i>0&&!started){started=true;html.classList.add('mx-started');}
+  html.classList.toggle('mx-below',i>0);
+}
+function tick(t){
+  requestAnimationFrame(tick);
+  const dt=Math.min(.1,(t-last)/1000);last=t;
+  const target=targetDepth();depth=reduced.matches?target:depth+(target-depth)*(1-Math.exp(-dt*7));
+  num.textContent=fmt(depth);
+  const p=Math.max(0,Math.min(1,depth/MAX));fill.style.transform=`scaleY(${p})`;now.style.top=(p*100)+'%';
+  syncMarks(depth);
+  // Keep the skyline standing on the shader's ground line.
+  const ground=innerHeight*(.5-depth/72);sky.style.transform=`translate3d(0,${Math.round(ground-sky.offsetHeight)}px,0)`;sky.classList.toggle('gone',ground<-40);
+  stage?.setDepth(depth);
+  show(activeIndex());
+}
+requestAnimationFrame(tick);
+
+// WebGL loads after first paint; without it the page still reads top to bottom.
+const canvas=document.querySelector('.mx-stage');
+const load=()=>import('./stage.js').then(m=>{try{stage=m.createStage(canvas);stage.setDepth(depth);shown=-1;html.classList.add('mx-gl');}catch{html.classList.add('mx-nogl');}}).catch(()=>html.classList.add('mx-nogl'));
+'requestIdleCallback' in window?requestIdleCallback(load,{timeout:600}):setTimeout(load,120);
+requestAnimationFrame(()=>html.classList.add('mx-ready'));

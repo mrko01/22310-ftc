@@ -1,71 +1,82 @@
-// Static markup for 22310.ca/minex. Rendered at build time from the same data the game uses,
-// so every fact on the page is real, crawlable text.
-import {MINERALS,ROCKS,ZONES,GROUPS,FACTS,SOURCES,rockIndex} from './data.js';
+// Static markup for 22310.ca/minex: a scroll-stop descent, one scene per screen.
+import {STORY,SOURCES} from './data.js';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmt=m=>Math.round(m).toLocaleString('en-CA').replace(/,/g,' ');
-const arrow='<svg class="arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11" stroke="currentColor" stroke-width="1.6"/></svg>';
-const down='<svg class="arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v16m6-6-6 6-6-6" stroke="currentColor" stroke-width="1.6"/></svg>';
-const minerals=MINERALS.slice(1);
-const oreNames=z=>[...Object.keys(z.ores||{}),...Object.keys(z.rare||{})].map(k=>minerals.find(m=>m.key===k)).filter(Boolean);
+const fmt=m=>Math.round(m).toLocaleString('en-CA');
+const down='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v16m6-6-6 6-6-6" stroke="currentColor" stroke-width="1.5"/></svg>';
+const up='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20V4m-6 6 6-6 6 6" stroke="currentColor" stroke-width="1.5"/></svg>';
 
-const hero=`<section class="mx-hero" aria-labelledby="mx-title">
-  <div class="mx-hero-top mx-inner"><span>Minex / Earth science lab</span><span>46.49° N, 80.99° W</span><span>Greater Sudbury, Ontario</span></div>
-  <div class="mx-hero-main mx-inner">
-    <p class="mx-hero-kicker">A mining simulator by EDIT Saffron · FTC 22310</p>
-    <h1 class="mx-title" id="mx-title" aria-label="Minex"><span aria-hidden="true">M</span><span aria-hidden="true">I</span><span aria-hidden="true">N</span><span aria-hidden="true">E</span><span aria-hidden="true">X</span></h1>
-    <div class="mx-hero-foot">
-      <p class="mx-hero-lede">Dig three kilometres into the Sudbury Basin, a 1.85-billion-year-old impact crater, and learn the ores that built a city.</p>
-      <div class="mx-hero-actions"><button class="button magnetic" data-play><span data-play-label="Start the descent">Start the descent</span> ${down}</button><a class="button button-line" href="#guide">Field guide ${arrow}</a></div>
-    </div>
+// ---------- Sudbury skyline (hand-built SVG, deterministic) ----------
+function rand(seed){let a=seed;return()=>{a=(a*1664525+1013904223)>>>0;return a/4294967296;};}
+const r1=v=>Math.round(v*10)/10;
+function ridge(seed,base,amp,step,w=1600){const R=rand(seed);let d=`M0 400V${base}`;for(let x=0;x<=w;x+=step){const y=base-amp*(.5+.5*Math.sin(x/w*7+seed))-R()*amp*.35;d+=`L${x} ${r1(y)}`;}return d+`V400Z`;}
+function spruce(x,base,h,R){
+  // A black spruce: narrow, ragged tiers, drooping crown.
+  const w=h*.2,tiers=Math.max(5,Math.round(h/7));let l=`M${r1(x)} ${r1(base-h)}`,r=[];
+  for(let i=1;i<=tiers;i++){const t=i/tiers,y=base-h+t*h*.94,half=w*(.18+.82*t)*(.75+R()*.5);l+=`L${r1(x-half)} ${r1(y)}L${r1(x-half*.35)} ${r1(y-h/tiers*.35)}`;r.push(`L${r1(x+half*.35)} ${r1(y-h/tiers*.35)}L${r1(x+half)} ${r1(y)}`);}
+  return l+`L${r1(x-w*.06)} ${base}L${r1(x+w*.06)} ${base}`+r.reverse().join('')+'Z';
+}
+function treeline(seed,from,to,base,minH,maxH,gap){const R=rand(seed);let d='';for(let x=from;x<to;x+=gap*(.6+R()*.8)){d+=spruce(x,base+R()*3,minH+R()*(maxH-minH),R);}return d;}
+const headframe=(()=>{
+  // Steel headframe: braced tower, back-leg to the hoist house, two sheave wheels.
+  const x0=468,x1=508,top=128,g=400;let s='';
+  s+=`<path d="M${x0} ${g}V${top}M${x1} ${g}V${top}M${x0-4} ${top}H${x1+4}"/>`;
+  for(let y=top;y<g-20;y+=34)s+=`<path d="M${x0} ${y}L${x1} ${y+34}M${x1} ${y}L${x0} ${y+34}M${x0} ${y+34}H${x1}"/>`;
+  s+=`<path d="M${x1} ${top+8}L${x1+150} ${g-28}M${x1} ${top+40}L${x1+128} ${g-28}"/>`;
+  for(let k=0;k<5;k++){const t=(k+1)/6,ax=x1+150*t,ay=top+8+(g-36-top)*t,bx=x1+128*t,by=top+40+(g-68-top)*t;s+=`<path d="M${r1(ax)} ${r1(ay)}L${r1(bx)} ${r1(by)}"/>`;}
+  const wheel=(cx,cy,r)=>`<circle cx="${cx}" cy="${cy}" r="${r}"/>`+[0,1,2,3].map(i=>{const a=i*Math.PI/4;return`<path d="M${r1(cx-Math.cos(a)*r)} ${r1(cy-Math.sin(a)*r)}L${r1(cx+Math.cos(a)*r)} ${r1(cy+Math.sin(a)*r)}"/>`;}).join('');
+  s+=wheel(x0+8,top-14,15)+wheel(x1-4,top-10,11);
+  s+=`<path class="fill" d="M${x1+118} ${g}V${g-44}H${x1+204}V${g}Z"/><path class="fill" d="M${x1+114} ${g-44}L${x1+161} ${g-62}L${x1+208} ${g-44}Z"/><path class="fill" d="M${x0-20} ${g}V${g-26}H${x1+20}V${g}Z"/>`;
+  return `<g class="mx-headframe">${s}</g>`;
+})();
+const stack=`<g class="mx-stack"><path class="fill" d="M1176 400L1186 74H1206L1216 400Z"/><path class="band" d="M1186.5 92H1205.5M1187.2 112H1204.8"/><rect class="fill" x="1182" y="70" width="28" height="6"/><circle class="mx-beacon" cx="1196" cy="64" r="3.2"/></g>`;
+const nickel=`<g class="mx-nickel"><path class="fill" d="M120 400Q190 352 262 400Z"/><circle class="fill coin" cx="190" cy="318" r="48"/><circle class="rim" cx="190" cy="318" r="41"/><circle class="rim faint" cx="190" cy="318" r="45"/><path class="fill" d="M178 362H202V376H178Z"/></g>`;
+const skyline=`<svg class="mx-skyline" viewBox="0 0 1600 400" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+  <path class="far" d="${ridge(3,330,46,40)}"/>
+  ${stack}
+  <path class="mid" d="${ridge(7,362,30,32)}"/>
+  <path class="mid" d="${treeline(11,0,1600,366,14,30,9)}"/>
+  ${nickel}${headframe}
+  <path class="near" d="${ridge(13,388,10,50)}"/>
+  <path class="near" d="${treeline(17,0,380,392,26,58,13)}${treeline(19,720,1100,394,22,48,15)}${treeline(23,1300,1600,392,30,64,12)}"/>
+  <rect class="near" x="0" y="396" width="1600" height="4"/>
+</svg>`;
+
+// ---------- scenes ----------
+// Letters are split at build time so titles can resolve letter by letter.
+const letters=t=>`<span aria-hidden="true">${t.split(' ').map(w=>`<b class="w">${[...w].map(c=>`<i>${esc(c)}</i>`).join('')}</b>`).join(' ')}</span>`;
+const scene=(s,i)=>{
+  const id=`stop-${i+1}`,has=s.kind!=='layer';
+  return `<section class="mx-scene mx-${s.kind}" id="${id}" data-depth="${s.depth}"${has?` data-specimen="${s.key}"`:''} aria-labelledby="${id}-t">
+  <div class="mx-copy">
+    <h2 class="mx-name" id="${id}-t" aria-label="${esc(s.title)}">${letters(s.title)}</h2>
+    ${s.formula?`<p class="mx-formula">${s.formula}</p>`:''}
+    <p class="mx-text">${esc(s.text)}</p>
+    ${s.note?`<p class="mx-note">${esc(s.note)}</p>`:''}
   </div>
-  <dl class="mx-hero-stats mx-inner">
-    <div><dt>Impact</dt><dd>1.85 Ga</dd></div><div><dt>Depth to dig</dt><dd>3,000 m</dd></div><div><dt>Minerals</dt><dd>${minerals.length}</dd></div><div><dt>Plays on</dt><dd>Phone &amp; laptop</dd></div>
-  </dl>
-  <a class="mx-scroll" href="#how"><span>Scroll to descend</span><i aria-hidden="true"></i></a>
-</section>`;
+</section>`;};
+const finds=STORY.map((s,i)=>[s,i]).filter(([s])=>s.kind!=='layer');
 
-const how=`<section class="mx-sec" id="how" aria-labelledby="how-title"><div class="mx-inner">
-  <header class="mx-head reveal"><p class="mx-kicker">01 · How Minex works</p><h2 class="mx-h" id="how-title">Dig. Identify. Assay.</h2><p class="mx-head-lede">A real cross-section of Sudbury geology, simplified into one shaft. Every rock, mineral and fact is drawn from geological surveys and mineral databases.</p></header>
-  <ol class="mx-steps">
-    <li class="mx-step reveal"><span class="mx-step-num">01</span><h3>Dig through real layers</h3><p>Tap, click or hold to tunnel down through glacial till, crater-fill breccia, the impact melt sheet and the footwall. Hard rock is slow; soft sulfide ore is fast.</p><span class="mx-step-meta">Mohs hardness sets drill time</span></li>
-    <li class="mx-step reveal"><span class="mx-step-num">02</span><h3>Identify like a geologist</h3><p>Every new mineral opens a specimen card. Run magnet, streak and hardness tests to tell pyrrhotite from pentlandite, or chalcopyrite from pyrite.</p><span class="mx-step-meta">${minerals.length} minerals · 3 field tests</span></li>
-    <li class="mx-step reveal"><span class="mx-step-num">03</span><h3>Assay, upgrade, go deeper</h3><p>Ride the cage up, sell ore at the assay office, and answer the assayer’s question for a bonus. Then upgrade drills, haulage and ventilation for the heat at depth.</p><span class="mx-step-meta">Rock reaches ~40 °C at 2 km</span></li>
-  </ol>
-</div></section>`;
-
-const guide=`<section class="mx-sec" id="guide" aria-labelledby="guide-title"><div class="mx-inner">
-  <header class="mx-head reveal"><p class="mx-kicker">02 · Field guide</p><h2 class="mx-h" id="guide-title">The ores of Sudbury</h2><p class="mx-head-lede">From pyrrhotite, the most common sulfide in the ore, to froodite, named after the Frood mine. Open any specimen for its formula, properties and story.</p></header>
-  <div class="mx-chips reveal" role="group" aria-label="Filter minerals"><button data-filter="all" aria-pressed="true">All</button>${Object.entries(GROUPS).map(([k,v])=>`<button data-filter="${k}" aria-pressed="false">${esc(v)}</button>`).join('')}<span class="sr-only" id="mx-guide-count" aria-live="polite"></span></div>
-  <div class="mx-specs">${minerals.map((m,i)=>`<button class="mx-spec reveal" data-mineral="${m.key}" data-group="${m.group}" aria-label="${esc(m.name)}, ${esc(m.metal)}. Open details">
-    <span class="mx-spec-art"><canvas class="mx-specimen" data-specimen="${m.key}" aria-hidden="true"></canvas><span class="mx-spec-no">${String(i+1).padStart(2,'0')}</span><span class="mx-spec-got">Collected</span></span>
-    <span class="mx-spec-body"><span class="mx-spec-name">${esc(m.name)}</span><span class="mx-spec-formula">${m.formula}</span><span class="mx-spec-metal">${esc(m.metal)}</span>
-    <span class="mx-spec-h" aria-hidden="true"><span>Mohs</span><span class="mx-spec-scale"><i></i></span><span>${m.h[0]===m.h[1]?m.h[0]:m.h[0]+'–'+m.h[1]}</span></span></span></button>`).join('')}</div>
-</div></section>`;
-
-const basin=`<section class="mx-sec mx-basin" id="basin" aria-labelledby="basin-title"><div class="mx-inner">
-  <header class="mx-head reveal"><p class="mx-kicker">03 · Into the basin</p><h2 class="mx-h" id="basin-title">Eight layers, three kilometres</h2><p class="mx-head-lede">Keep scrolling: the background is the Minex mine itself, sinking with you. The real basin is a tilted bowl, so no single shaft passes every layer. Minex stacks them in their true order.</p></header>
-  <div class="mx-basin-grid">
-    <nav class="mx-column" aria-label="Layers">${ZONES.map((z,i)=>`<a href="#layer-${z.id}" data-layer-link><span>${z.num}</span><b>${esc(z.name)}</b><em>${fmt(z.from)} m</em></a>`).join('')}</nav>
-    <div class="mx-layers">${ZONES.map(z=>{const r=ROCKS[rockIndex[z.rock]],ores=oreNames(z);return`<article class="mx-layer" id="layer-${z.id}" data-layer-from="${z.from}" data-layer-to="${z.to}">
-      <div class="mx-layer-card reveal"><p class="mx-layer-depth"><span>${z.num}</span>${fmt(z.from)}–${fmt(z.to)} m</p><h3>${esc(z.name)}</h3><p class="mx-layer-rock"><b>${esc(r.name)}.</b> ${esc(r.desc)}</p>${z.toast?`<p>${esc(z.toast)}</p>`:''}
-      ${ores.length?`<ul class="mx-layer-ores" aria-label="Minerals in this layer">${ores.map(m=>`<li><i class="mx-dot mx-dot-${m.group}"></i>${esc(m.name)}</li>`).join('')}</ul>`:'<p class="mx-layer-none">No ore here. Just keep digging.</p>'}</div></article>`;}).join('')}</div>
+export const minexBody=`<main tabindex="-1" id="main" class="mx">
+<canvas class="mx-stage" aria-hidden="true"></canvas>
+<div class="mx-sky" aria-hidden="true">${skyline}</div>
+<div class="mx-gauge" aria-hidden="true"><p class="mx-gauge-num"><span data-depth>0</span><small>m</small></p></div>
+<div class="mx-rail" aria-hidden="true"><i class="mx-rail-fill"></i><div data-marks></div><i class="mx-rail-now"></i></div>
+<section class="mx-scene mx-hero" id="top" data-depth="-16" aria-labelledby="mx-title">
+  <div class="mx-copy">
+    <h1 class="mx-name mx-title" id="mx-title" aria-label="Minex">${letters('Minex')}</h1>
+    <p class="mx-lede">A descent into the Sudbury Basin, where something ten kilometres wide struck the Earth 1.85 billion years ago.</p>
   </div>
-</div></section>`;
-
-const facts=`<section class="mx-sec" id="sudbury" aria-labelledby="facts-title"><div class="mx-inner">
-  <header class="mx-head reveal"><p class="mx-kicker">04 · Sudbury, by the numbers</p><h2 class="mx-h" id="facts-title">A city built on an impact</h2></header>
-  <div class="mx-bento">${FACTS.map((f,i)=>`<article class="mx-fact reveal ${i===0||i===3?'wide':''}"><p class="mx-fact-k">${esc(f.k)}</p><h3>${esc(f.t)}</h3><p>${esc(f.d)}</p></article>`).join('')}</div>
-</div></section>`;
-
-const final=`<section class="mx-final" aria-labelledby="final-title"><div class="mx-inner">
-  <p class="mx-kicker reveal">3,000 m below</p><h2 class="mx-final-h reveal" id="final-title">Ready to go underground?</h2>
-  <div class="mx-final-actions reveal"><button class="button magnetic" data-play><span data-play-label="Start the descent">Start the descent</span> ${down}</button><p>Saves automatically on this device. Sound is off until you turn it on.</p></div>
-</div></section>`;
-
-const sources=`<section class="mx-sources" aria-labelledby="sources-title"><div class="mx-inner"><h2 id="sources-title" class="mx-kicker">Sources</h2><ul>${SOURCES.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noreferrer">${esc(t)} ↗</a></li>`).join('')}</ul><p>Depths, grades and temperatures are rounded for gameplay. Mine and lab names belong to their owners; Minex is an independent educational project.</p></div></section>`;
-
-export const minexBody=`<main tabindex="-1" id="main" class="mx-page"><canvas class="mx-strata" aria-hidden="true"></canvas>
-<div class="mx-depthbar" aria-hidden="true"><span class="mx-label">Depth</span><strong data-page-depth>0 m</strong><span data-page-zone>Surface</span></div>
-${hero}${how}${guide}${basin}${facts}${final}${sources}</main>
-<section class="mx-game" id="minex-game" aria-label="Minex mining simulator" hidden></section>`;
+  <a class="mx-hint" href="#stop-1">Scroll to descend ${down}</a>
+</section>
+${STORY.map(scene).join('\n')}
+<section class="mx-scene mx-end" id="bottom" data-depth="2600" aria-labelledby="mx-end-t">
+  <div class="mx-copy">
+    <h2 class="mx-name" id="mx-end-t" aria-label="2,600 metres">${letters('2,600 metres')}</h2>
+    <p class="mx-text">About as deep as Sudbury mines go today, where the rock is close to 50&nbsp;°C. On the way down you passed:</p>
+    <ol class="mx-found">${finds.map(([s,i])=>`<li><a href="#stop-${i+1}"><span>${esc(s.title)}</span><em>${fmt(s.depth)} m</em></a></li>`).join('')}</ol>
+    <a class="mx-go" href="#top">Back to the surface ${up}</a>
+    <p class="mx-sources">Sources: ${SOURCES.map(([t,u])=>`<a href="${u}" target="_blank" rel="noreferrer">${esc(t)}</a>`).join(', ')}. Layers are stacked into one shaft for the story; the real basin is a tilted bowl.</p>
+  </div>
+</section>
+</main>`;
