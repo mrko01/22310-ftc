@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.js';
 import {ConvexGeometry} from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import {RoundedBoxGeometry} from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import {mergeVertices} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import {mergeVertices,mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import {createModels} from './models.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import {finishRobot} from '../experience/materials.js';
@@ -102,14 +103,25 @@ vec3 mxColor(vec3 base){
   col=base*(.78+.3*smoothstep(.15,.8,mxH+.3));mxR=.7+1.4*pit+.3*mf(p*2.);
 #elif MX_KIND==5
   // Host rock: pale feldspar, dark pyroxene grains and a little rust.
-  float n1=mn(p),n2=mn(p*1.7+5.),n3=mf(vObjPos*1.4+3.);
+  float n1=mn(p),n2=mn(p*1.7+5.);
   col=uDA*(.78+.44*mf(p*.3));col=mix(col,uDB*.8,smoothstep(.74,.8,n1)*.5);col=mix(col,uDC,smoothstep(.7,.8,n2)*.8);
-  col=mix(col,vec3(.36,.18,.08),smoothstep(.62,.72,n3)*.35);col*=base;
+  col=mix(col,vec3(.36,.18,.08),smoothstep(.64,.74,mf(p*.07+3.))*.22);col*=base;
   mxH=mf(p*.5)*.6+smoothstep(.7,.78,n1)*.25-smoothstep(.72,.8,n2)*.15;mxR=.9+.2*n1;
 #elif MX_KIND==6
   // Crystal faces: fine growth lines and smudged lustre.
   mxH=abs(sin(dot(vObjPos,normalize(vec3(1.,1.3,.7)))*uDScale*6.2831))*.35+mf(p*.8)*.65;
   col=base*(.92+.16*mf(p*.5));mxR=.6+.9*mf(vObjPos*4.+2.);
+#elif MX_KIND==8
+  // Tyres: chevron lugs around the tread, smooth sidewalls.
+  float a=atan(vObjPos.z,vObjPos.x),side=1.-abs(vObjN.y);float lug=smoothstep(.32,.5,abs(fract(a*uDScale/6.2831+abs(vObjPos.y)*1.4)-.5));
+  mxH=mix(.5,lug,side);col=base*(.7+.4*mxH);mxR=1.;
+#elif MX_KIND==9
+  // Painted steel: mud collects low down, scratches show bare metal.
+  float dirt=clamp(smoothstep(.2,-.9,vObjPos.y*uDScale)*.75+smoothstep(.6,.8,mf(vObjPos*3.))*.45,0.,1.);float scr=smoothstep(.86,.95,mn(vObjPos*vec3(60.,3.,60.)));
+  col=mix(base,uDB,dirt*.75);col=mix(col,uDC,scr*.55);mxH=mf(vObjPos*9.)*.4+scr*.3;mxR=.8+dirt*.55-scr*.35;
+#elif MX_KIND==10
+  // Flexible vent duct: hoop ribs along its length.
+  mxH=sin(vObjPos.y*uDScale)*.5+.5;col=base*(.8+.25*mxH);mxR=.95;
 #else
   // Needles: lengthwise striations.
   mxH=sin(atan(vObjPos.z,vObjPos.x)*7.)*.5+.5;col=base*(.9+.2*mn(vObjPos*vec3(30.,2.,30.)));mxR=.8+.4*mn(vObjPos*20.);
@@ -127,7 +139,7 @@ function surface(material,kind,{a='#ffffff',b='#ffffff',c='#ffffff',scale=1,bump
   material.customProgramCacheKey=()=>'mx'+kind;
   return material;
 }
-const KIND={striate:1,grains:2,tarnish:3,pitted:4,rock:5,faces:6,needle:7};
+const KIND={striate:1,grains:2,tarnish:3,pitted:4,rock:5,faces:6,needle:7,tread:8,paint:9,ribs:10};
 
 // ---------- geometry ----------
 function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -172,11 +184,14 @@ export function createStage(canvas){
   const rim=new THREE.DirectionalLight(0x9fb4ff,1.3);rim.position.set(4,-1,-3);
   const bounce=new THREE.DirectionalLight(0xff9a5a,.45);bounce.position.set(.5,-4,2);
   scene.add(key,rim,bounce,new THREE.AmbientLight(0xffffff,.12));
+  // A fixed pool of tunnel lights, always present so materials never recompile when a diorama appears.
+  const pool=[0,1,2].map(()=>new THREE.PointLight(0xffc58a,0,1,2)),spot=new THREE.SpotLight(0xdde9ff,0,1,.5,.6,2);scene.add(...pool,spot,spot.target);const tmpV=new THREE.Vector3();
   const holder=new THREE.Group();scene.add(holder);
 
   const metal=(color,rough,kind,opts,extra={})=>surface(new THREE.MeshPhysicalMaterial({color,metalness:1,roughness:rough,envMapIntensity:1.2,...extra}),kind,opts);
   const rockMat=(a,opts={})=>surface(new THREE.MeshPhysicalMaterial({color:'#ffffff',roughness:.9,metalness:0,envMapIntensity:.4,...opts.extra}),KIND.rock,{a,b:'#cfc8bc',c:'#151312',scale:24,bump:.006,...opts});
   const rock=(r,seed,a,o={})=>new THREE.Mesh(lump(r,5,seed,{amp:.16,cuts:4,...o}),rockMat(a));
+  const models=createModels({THREE,surface,KIND,rockMat,lump,rng,RoundedBoxGeometry,mergeGeometries,mergeVertices});
   const builders={
     pyrite(){const g=new THREE.Group(),m=metal('#d8c278',.16,KIND.striate,{b:'#9c7a3c',scale:26,bump:.0035});
       const base=rock(.8,3,'#3c3833');base.scale.set(1.4,.48,1.05);base.position.y=-.78;g.add(base);
@@ -210,35 +225,15 @@ export function createStage(canvas){
     gold(){const g=new THREE.Group(),m=metal('#f0bf48',.14,KIND.pitted,{scale:5,bump:.02});
       const n=new THREE.Mesh(lump(.95,5,61,{amp:.26,freq:1.1}),m);n.scale.set(1.2,.78,.9);g.add(n);
       const R=rng(8);for(let i=0;i<4;i++){const f=new THREE.Mesh(lump(.2,3,70+i,{amp:.35}),m);f.position.set((R()-.5)*2.4,-.72+R()*.3,(R()-.5)*1.2);g.add(f);}return g;},
-    cone(){const g=new THREE.Group();const geo=indexed(new THREE.ConeGeometry(.85,1.9,128,40));
-      const p=geo.attributes.position,v=new THREE.Vector3(),col=new Float32Array(p.count*3),c=new THREE.Color(),base=hex('#8a8279');
-      for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);const a=Math.atan2(v.z,v.x),k=Math.max(0,(.95-v.y)/1.9),ridge=Math.abs(Math.sin(a*22+v.y*1.8+Math.sin(a*5)*.8));
-        const s=1+ridge*.1*k-Math.sin(a*7+v.y*2.2)*.04*k;if(v.y>-.94){v.x*=s;v.z*=s;}p.setXYZ(i,v.x,v.y,v.z);c.copy(base).multiplyScalar(.45+.75*ridge);col.set([c.r,c.g,c.b],i*3);}
-      geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.computeVertexNormals();
-      const cone=new THREE.Mesh(geo,rockMat('#6a625a',{extra:{vertexColors:true},scale:11}));const back=rock(1.05,81,'#4a443e');back.position.set(0,-.65,-.45);back.scale.set(1.15,.7,.6);g.add(back,cone);g.rotation.z=-.22;return g;},
-    loader(){
-      // A battery-electric load-haul-dump loader: two articulated frames, bucket up front, battery pack behind.
-      const g=new THREE.Group(),paint=surface(new THREE.MeshPhysicalMaterial({color:'#e2a31c',metalness:.3,roughness:.42,clearcoat:.35,clearcoatRoughness:.5,envMapIntensity:.9}),KIND.faces,{scale:3,bump:.002});
-      const dark=new THREE.MeshStandardMaterial({color:'#2b2927',roughness:.62,metalness:.55,envMapIntensity:.8}),steel=metal('#8f8b85',.42,KIND.faces,{scale:5,bump:.003});
-      const tire=surface(new THREE.MeshStandardMaterial({color:'#161514',roughness:.95}),KIND.needle,{bump:.004}),lamp=new THREE.MeshStandardMaterial({color:'#fff2d0',emissive:'#ffd58a',emissiveIntensity:2.2});
-      const box=(w,h,d,m,x,y,z,r=.04)=>{const b=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,2,r),m);b.position.set(x,y,z);g.add(b);return b;};
-      box(1.15,.42,.86,paint,.62,.34,0);box(.78,.2,.8,dark,.72,.65,0,.03);for(let i=0;i<4;i++)box(.04,.06,.82,steel,.4+i*.18,.78,0,.01);
-      box(.8,.3,.8,paint,-.48,.34,0);const pin=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.5,20),steel);pin.position.set(.06,.36,0);g.add(pin);
-      box(.34,.3,.3,dark,.12,.62,.27);box(.44,.04,.4,paint,.12,.82,.27,.015);for(const[x,z]of[[-.06,.1],[.3,.1],[-.06,.44],[.3,.44]]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.22,8),steel);p.position.set(x,.7,z);g.add(p);}
-      for(const z of[-.33,.33]){const arm=box(.78,.1,.1,paint,-.92,.48,z,.02);arm.rotation.z=-.32;}
-      const s=new THREE.Shape();s.moveTo(0,0);s.lineTo(.62,0);s.lineTo(.7,.08);s.lineTo(.6,.46);s.lineTo(.5,.5);s.lineTo(.46,.12);s.lineTo(.05,.08);s.closePath();
-      const bucket=new THREE.Mesh(new THREE.ExtrudeGeometry(s,{depth:.96,bevelEnabled:true,bevelThickness:.015,bevelSize:.015,bevelSegments:1}),steel);bucket.position.set(-1.92,.12,-.48);g.add(bucket);
-      const wheel=new THREE.CylinderGeometry(.24,.24,.2,32),rim=new THREE.CylinderGeometry(.13,.13,.21,20);
-      for(const[x,z]of[[.78,.5],[.78,-.5],[-.56,.5],[-.56,-.5]]){const t=new THREE.Mesh(wheel,tire),r=new THREE.Mesh(rim,dark);for(const m of[t,r]){m.rotation.x=Math.PI/2;m.position.set(x,.24,z);g.add(m);}}
-      for(const z of[.16,.4])box(.03,.05,.07,lamp,-.03,.72,z,.01);for(const z of[-.3,.3])box(.03,.05,.08,lamp,-.88,.5,z,.01);
-      g.position.set(.42,-.4,0);const wrap=new THREE.Group().add(g);wrap.scale.setScalar(.98);wrap.rotation.set(.22,0,0);return wrap;},
+    cone(){return models.shatterCone();},
+    loader(){const w=new THREE.Group(),l=models.loader();l.scale.setScalar(.26);l.position.y=-.36;w.add(l);w.rotation.set(.16,0,0);return w;},
     teleop(){
       // Remote control: the 1993 teleoperated loader beside our robot, which spends two minutes of every match driven the same way.
       const g=new THREE.Group(),l=builders.loader();l.position.x=-.78;g.add(l);
       const slot=new THREE.Group();g.add(slot);
       withRobot(r=>{r.scale.multiplyScalar(.34);r.rotation.set(0,.9,0);r.updateMatrixWorld(true);
         const box=new THREE.Box3().setFromObject(r);r.position.set(1.55-(box.min.x+box.max.x)/2,-.36-box.min.y,.45-(box.min.z+box.max.z)/2);slot.add(r);});
-      g.userData.size=.72;g.userData.narrow=.78;return g;},
+      g.userData.size=.72;g.userData.narrow=.78;g.userData.lift=.62;g.userData.shift=.1;return g;},
     auto(){
       // Autonomous: our robot drives its own figure-eight across foam field tiles, leaving a trail.
       const g=new THREE.Group(),N=4,T=.62,tiles=new THREE.InstancedMesh(new RoundedBoxGeometry(T-.012,.05,T-.012,2,.01),new THREE.MeshStandardMaterial({color:'#2c2c30',roughness:.95,envMapIntensity:.45}),N*N),o=new THREE.Object3D();
@@ -251,19 +246,15 @@ export function createStage(canvas){
       g.userData={baseX:.62,spinRate:.25,size:1.05,tick(dt){t+=dt*.42;const p=path(t),n=path(t+.01);bot.position.copy(p);bot.rotation.y=Math.atan2(n.x-p.x,n.z-p.z)+ROBOT_FORWARD;
         hist.unshift(p.clone().setY(.006));if(hist.length>TRAIL)hist.pop();trail.count=hist.length;hist.forEach((q,i)=>{mark.position.copy(q);mark.scale.setScalar(Math.max(.05,1-i/TRAIL));mark.updateMatrix();trail.setMatrixAt(i,mark.matrix);});trail.instanceMatrix.needsUpdate=true;}};
       return g;},
-    snolab(){const g=new THREE.Group();const R=1.05;
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(R*.96,64,48),new THREE.MeshPhysicalMaterial({color:'#9cc7d8',roughness:.05,metalness:0,transparent:true,opacity:.18,envMapIntensity:1.6})));
-      g.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(R*1.12,2)),new THREE.LineBasicMaterial({color:'#c9b27a',transparent:true,opacity:.42})));
-      const pts=new THREE.IcosahedronGeometry(R*1.1,4).attributes.position,seen=new Set(),pos=[];for(let i=0;i<pts.count;i++){const k=[pts.getX(i),pts.getY(i),pts.getZ(i)].map(n=>n.toFixed(3)).join();if(!seen.has(k)){seen.add(k);pos.push([pts.getX(i),pts.getY(i),pts.getZ(i)]);}}
-      const inst=new THREE.InstancedMesh(new THREE.SphereGeometry(.028,10,8),new THREE.MeshStandardMaterial({color:'#e6a640',emissive:'#7a4510',emissiveIntensity:.5,roughness:.35,metalness:.5}),pos.length),o=new THREE.Object3D();
-      pos.forEach(([x,y,z],i)=>{o.position.set(x,y,z);o.updateMatrix();inst.setMatrixAt(i,o.matrix);});g.add(inst);return g;},
+    snolab(){return models.snolab();},
+    'mine-nrs':()=>models.diorama('nrs'),'mine-garson':()=>models.diorama('garson'),'mine-creighton':()=>models.diorama('creighton'),'mine-onaping':()=>models.diorama('onaping'),
   };
 
   // ---------- state ----------
   let current=null,leaving=null,want=null,depth=0,w=1,h=1,raf=0,running=true,last=performance.now(),spin=0,drag=null,velocity=0,tiltX=0,tiltY=0,ptr=[0,0];
   let bgDepth=NaN,bgDirty=true,blur=0,prevDepth=0,lampBase=[.5,.5],lamp=[.5,.5],lampPtr=[0,0],hovering=false;
   const cache={},build=key=>cache[key]||(cache[key]=builders[key]());
-  let robotPromise=null;
+  let robotPromise=null,frameInfo={wide:true,visW:1,size:1};
   const ROBOT_FORWARD=0;
   const withRobot=fn=>loadRobot().then(r=>{if(r)fn(r.clone(true));bgDirty=true;});
   function loadRobot(){
@@ -277,7 +268,7 @@ export function createStage(canvas){
   function layout(){
     const aspect=w/h,wide=aspect>1.05,visH=2*camera.position.z*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),visW=visH*aspect;
     const nx=wide?Math.min(.16,Math.max(0,(1.9-aspect)*.3)):0,ny=wide?.02:.22,size=Math.min(visH*(wide?.25:.19),visW*(wide?.17:.3));
-    holder.position.set(nx*visW/2,ny*visH/2,0);holder.scale.setScalar(size);lampBase=[.5+nx/2,.5+ny/2];
+    holder.position.set(nx*visW/2,ny*visH/2,0);holder.scale.setScalar(size);lampBase=[.5+nx/2,.5+ny/2];frameInfo={wide,visW,size};
   }
   function resize(){
     w=canvas.clientWidth||innerWidth;h=canvas.clientHeight||innerHeight;const pr=Math.min(devicePixelRatio||1,w<700?1.5:1.25);
@@ -290,7 +281,7 @@ export function createStage(canvas){
     if(leaving){holder.remove(leaving.g);leaving.g.position.y=0;leaving=null;}
     if(current)leaving={g:current,t:0};
     current=null;
-    if(key&&builders[key]){const g=build(key);if(leaving?.g===g)leaving=null;g.userData.t=0;g.scale.setScalar(.001);holder.add(g);current=g;}
+    if(key&&builders[key]){const g=build(key);if(leaving?.g===g)leaving=null;g.userData.t=0;g.userData.spin0=spin;g.scale.setScalar(.001);holder.add(g);current=g;}
     bgMat.uniforms.uLamp.value=key?1:.75;bgDirty=true;
   }
   const easeOut=t=>1-Math.pow(1-t,4);
@@ -304,8 +295,12 @@ export function createStage(canvas){
     let animating=false;
     if(leaving){animating=true;leaving.t+=dt/(reduced.matches?.01:.45);const e=easeOut(Math.min(1,leaving.t));leaving.g.scale.setScalar(Math.max(.001,(1-e*.9)*(leaving.g.userData.size||1)));leaving.g.position.y=e*1.4;if(leaving.t>=1){holder.remove(leaving.g);leaving.g.position.y=0;leaving=null;}}
     if(current){animating=true;current.userData.t=Math.min(1,current.userData.t+dt/(reduced.matches?.01:.85));const t=Math.max(0,current.userData.t*1.2-.2),e=easeOut(t),cu=current.userData,fit=(cu.size||1)*(w/h<1.05?(cu.narrow||1):1);current.scale.setScalar(Math.max(.001,(.92*e+.08*e*e)*fit));
-      if(!drag){velocity*=Math.pow(.92,dt*60);spin+=velocity*dt+(reduced.matches?0:dt*.15);}
-      const u=current.userData;u.tick?.(dt);current.rotation.y=spin*(u.spinRate??1)-1.2*(1-easeOut(t));tiltX+=(ptr[1]*.18-tiltX)*.06;tiltY+=(ptr[0]*.25-tiltY)*.06;current.rotation.x=tiltX+(u.baseX||0);current.position.y=-(1-e)*1.1+(reduced.matches?0:Math.sin(now/1400)*.04);holder.rotation.y=tiltY;}
+      if(!drag){velocity*=Math.pow(.92,dt*60);spin+=velocity*dt+(reduced.matches?0:dt*.15*(current.userData.idle??1));}
+      const u=current.userData;u.tick?.(dt,now/1000);current.rotation.y=(spin-(u.spin0||0))*(u.spinRate??1)+(u.baseY||0)+(u.sway&&!reduced.matches?Math.sin(now/4200)*u.sway:0)-1.2*(1-easeOut(t));tiltX+=(ptr[1]*.18-tiltX)*.06;tiltY+=(ptr[0]*.25-tiltY)*.06;current.rotation.x=tiltX+(u.baseX||0);current.position.y=(u.lift||0)-(1-e)*1.1+(reduced.matches||u.lights?0:Math.sin(now/1400)*.04);current.position.x=frameInfo.wide&&u.shift?u.shift*frameInfo.visW/2/frameInfo.size:0;holder.rotation.y=tiltY;}
+    // Tunnel lights follow their anchors inside the current diorama.
+    {const u=current?.userData,ws=current?holder.scale.x*current.scale.x:1,fade=current?Math.min(1,current.userData.t*1.5):0;if(current)current.updateMatrixWorld(true);
+      pool.forEach((l,i)=>{const d=u?.lights?.[i];if(d){d.anchor.getWorldPosition(l.position);l.color.setHex(d.color);l.distance=d.distance*ws;l.intensity=d.intensity*ws*ws*fade*1.5;}else l.intensity=0;});
+      const sp=u?.spot;if(sp){sp.anchor.getWorldPosition(spot.position);sp.target.getWorldPosition(tmpV);spot.target.position.copy(tmpV);spot.target.updateMatrixWorld();spot.color.setHex(sp.color);spot.distance=sp.distance*ws;spot.angle=sp.angle;spot.intensity=sp.intensity*ws*ws*fade*1.6;}else spot.intensity=0;}
     // Skip the frame entirely when nothing on screen has changed.
     if(!bgDirty&&!animating&&!blurChanged&&!blur)return;
     if(bgDirty){bgMat.uniforms.uDepth.value=depth;bgMat.uniforms.uLight.value.set(lamp[0],lamp[1]);renderer.setRenderTarget(target);renderer.render(bgScene,flat);renderer.setRenderTarget(null);bgDepth=depth;bgDirty=false;}
@@ -321,8 +316,8 @@ export function createStage(canvas){
 
   // Build every specimen and compile its shaders during idle time, in story order,
   // so arriving at a scene never stalls on geometry or shader compilation.
-  const queue=STORY.filter(s=>s.key&&!['teleop','auto'].includes(s.key)).map(s=>s.key).concat(['loader']),idle=window.requestIdleCallback||(f=>setTimeout(()=>f({timeRemaining:()=>8}),60));
-  const warm=new THREE.Scene();warm.environment=env;warm.add(key.clone(),rim.clone(),bounce.clone());
+  const queue=STORY.map(s=>s.key||(s.mine&&'mine-'+s.mine)).filter(k=>k&&!['teleop','auto'].includes(k)),idle=window.requestIdleCallback||(f=>setTimeout(()=>f({timeRemaining:()=>8}),60));
+  const warm=new THREE.Scene();warm.environment=env;warm.add(key.clone(),rim.clone(),bounce.clone(),...pool.map(l=>l.clone()),spot.clone());
   function prewarm(deadline){
     while(queue.length&&deadline.timeRemaining()>6){const k=queue.shift();const g=build(k);if(g.parent)continue;warm.add(g);
       const done=()=>{warm.remove(g);};renderer.compileAsync?renderer.compileAsync(warm,camera).then(done,done):(renderer.compile(warm,camera),done());}
