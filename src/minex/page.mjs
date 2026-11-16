@@ -1,5 +1,6 @@
 // Static markup for 22310.ca/minex: a scroll-stop descent, one scene per screen.
 import {STORY,SOURCES} from './data.js';
+import {sponsorCredit} from '../sponsors.mjs';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=m=>Math.round(m).toLocaleString('en-CA');
@@ -117,17 +118,18 @@ const scene=(s,i)=>{
     ${s.note?`<p class="mx-note">${esc(s.note)}</p>`:''}
   </div>
 </section>`;};
-const finds=STORY.map((s,i)=>[s,i]).filter(([s])=>s.kind!=='layer');
+const finds=STORY.map((s,i)=>[s,i]).filter(([s])=>s.kind==='mineral'||s.kind==='find');
 
 export const minexBody=`<main tabindex="-1" id="main" class="mx">
 <canvas class="mx-stage" aria-hidden="true"></canvas>
-<div class="mx-sky" aria-hidden="true">${skyline}</div>
+<div class="mx-sky" aria-hidden="true">${skyline}<canvas class="mx-rover"></canvas><span class="mx-rover-tag">EDIT Saffron’s robot</span></div>
 <div class="mx-gauge" aria-hidden="true"><p class="mx-gauge-num"><span data-depth>0</span><small>m</small></p></div>
 <div class="mx-rail" aria-hidden="true"><i class="mx-rail-fill"></i><div data-marks></div><i class="mx-rail-now"></i></div>
 <section class="mx-scene mx-hero" id="top" data-depth="-16" aria-labelledby="mx-title">
   <div class="mx-copy">
     <h1 class="mx-name mx-title" id="mx-title" aria-label="Minex">${letters('Minex')}</h1>
     <p class="mx-lede">A descent into the Sudbury Basin, where something ten kilometres wide struck the Earth 1.85 billion years ago.</p>
+    <p class="mx-by">Made in Sudbury by EDIT Saffron, FTC Team 22310.</p>
   </div>
   <a class="mx-hint" href="#stop-1">Scroll to descend ${down}</a>
 </section>
@@ -136,8 +138,11 @@ ${STORY.map(scene).join('\n')}
   <div class="mx-copy">
     <h2 class="mx-name" id="mx-end-t" aria-label="What you found">${letters('What you found')}</h2>
     <ol class="mx-found">${finds.map(([s,i])=>`<li><a href="#stop-${i+1}"><span>${esc(s.title)}</span><em>${fmt(s.depth)} m</em></a></li>`).join('')}</ol>
-    <p class="mx-links"><a class="mx-go" href="#top">Back to the surface ${up}</a><a class="mx-go" href="/team/">Meet the team ${arrow}</a><a class="mx-go" href="/sponsors/">Back our season ${arrow}</a></p>
-    <p class="mx-credit">Minex is made by EDIT Saffron, FTC Team 22310, at Lo-Ellen Park Secondary School in Greater Sudbury.</p>
+    <div class="mx-sign">
+      <div><p class="mx-sign-text">Every stop on this descent lies under Greater Sudbury, the city where our robot is built. We made Minex so anyone can see what’s down there.</p>
+      <p class="mx-links"><a class="mx-go" href="#top">Back to the surface ${up}</a><a class="mx-go" href="/team/">Meet the team ${arrow}</a></p></div>
+      ${sponsorCredit('mx-sponsor')}
+    </div>
     <p class="mx-sources">Sources: ${SOURCES.map(([t,u])=>`<a href="${u}" target="_blank" rel="noreferrer">${esc(t)}</a>`).join(', ')}. Layers are stacked into one shaft for the story; the real basin is a tilted bowl.</p>
   </div>
 </section>

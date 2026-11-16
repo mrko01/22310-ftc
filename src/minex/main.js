@@ -44,7 +44,7 @@ function show(i){
   if(i>0&&!started){started=true;html.classList.add('mx-started');}
   html.classList.toggle('mx-below',i>0);
 }
-let drawn=NaN,skyH=sky.offsetHeight,vh=innerHeight;
+let drawn=NaN,skyH=sky.offsetHeight,vh=innerHeight,rover=null,skyOn=true;
 addEventListener('resize',()=>{skyH=sky.offsetHeight;vh=innerHeight;drawn=NaN;});
 function tick(t){
   requestAnimationFrame(tick);
@@ -56,7 +56,7 @@ function tick(t){
   const p=Math.max(0,Math.min(1,depth/MAX));fill.style.transform=`scaleY(${p})`;now.style.top=(p*100)+'%';
   syncMarks(depth);
   // Keep the skyline standing on the shader's ground line; its layers drift apart for depth.
-  const ground=vh*(.5-depth/72),gone=ground<-40;sky.classList.toggle('gone',gone);
+  const ground=vh*(.5-depth/72),gone=ground<-40;sky.classList.toggle('gone',gone);if(skyOn===gone){skyOn=!gone;rover?.setActive(skyOn);}
   if(!gone){sky.style.transform=`translate3d(0,${Math.round(ground-skyH)}px,0)`;sky.style.setProperty('--sh',Math.max(0,vh*(.5+16/72)-ground).toFixed(1));}
   stage?.setDepth(depth);
 }
@@ -64,6 +64,10 @@ requestAnimationFrame(tick);
 
 // WebGL loads after first paint; without it the page still reads top to bottom.
 const canvas=document.querySelector('.mx-stage');
-const load=()=>import('./stage.js').then(m=>{try{stage=m.createStage(canvas);stage.setDepth(depth);shown=-1;html.classList.add('mx-gl');}catch{html.classList.add('mx-nogl');}}).catch(()=>html.classList.add('mx-nogl'));
+const load=()=>import('./stage.js').then(m=>{try{stage=m.createStage(canvas);stage.setDepth(depth);shown=-1;html.classList.add('mx-gl');}catch{html.classList.add('mx-nogl');return;}
+  // Our robot drives the lakeshore on the surface. It shares the stage's copy of the model.
+  const rc=document.querySelector('.mx-rover');import('./rover.js').then(r=>{try{const tag=document.querySelector('.mx-rover-tag');let tagW=0;
+    rover=r.createRover(rc,stage.robot(),(fx,unit)=>{tagW=tagW||tag.offsetWidth;const lift=unit*1.25+skyH*.009+3;tag.style.transform=`translate3d(${Math.round(fx*innerWidth-tagW/2)}px,${-Math.round(lift)}px,0)`;});
+    rover.setActive(skyOn);stage.robot().then(x=>{if(x){rc.classList.add('on');setTimeout(()=>tag.classList.add('on'),900);}});}catch{}});}).catch(()=>html.classList.add('mx-nogl'));
 'requestIdleCallback' in window?requestIdleCallback(load,{timeout:600}):setTimeout(load,120);
 requestAnimationFrame(()=>html.classList.add('mx-ready'));

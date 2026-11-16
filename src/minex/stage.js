@@ -329,5 +329,5 @@ export function createStage(canvas){
     if(queue.length)idle(prewarm,{timeout:1500});
   }
   idle(prewarm,{timeout:1500});
-  return{setDepth(d){depth=d;},show,resize,preload(key){if(key==='robot')loadRobot();}};
+  return{setDepth(d){depth=d;},show,resize,robot:()=>loadRobot(),preload(key){if(key==='robot')loadRobot();}};
 }
