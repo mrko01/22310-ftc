@@ -32,15 +32,15 @@ function syncMarks(d){
 }
 
 let stage=null,shown=-1,depth=depths[0],last=performance.now(),started=false;
-const robotAt=scenes.findIndex(s=>s.dataset.specimen==='robot'),mines=document.querySelector('.mx-shafts');
-mines?.pauseAnimations?.();
+const robotAt=scenes.findIndex(s=>['teleop','auto'].includes(s.dataset.specimen)),vigs=[...document.querySelectorAll('.mx-vig')];
+vigs.forEach(v=>v.pauseAnimations?.());
 function show(i){
   if(i===shown)return;shown=i;
   scenes.forEach((s,k)=>s.classList.toggle('is-on',k===i));
   stage?.show(scenes[i].dataset.specimen||null);
   // Fetch the robot model a few stops early; animate the shafts only while they are on screen.
   if(robotAt>=0&&i>=robotAt-3)stage?.preload('robot');
-  if(mines){const on=scenes[i].contains(mines)&&!reduced.matches;on?mines.unpauseAnimations():mines.pauseAnimations();}
+  vigs.forEach(v=>{const on=scenes[i].contains(v)&&!reduced.matches;on?v.unpauseAnimations?.():v.pauseAnimations?.();});
   if(i>0&&!started){started=true;html.classList.add('mx-started');}
   html.classList.toggle('mx-below',i>0);
 }

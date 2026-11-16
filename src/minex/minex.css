@@ -118,41 +118,44 @@ html.mx-dragging,html.mx-dragging .mx-scene{cursor:grabbing}
 .mx-sources a{color:rgba(242,237,230,.6);text-decoration:underline;text-underline-offset:2px}
 .mx-sources a:hover{color:var(--paper)}
 
-/* ---------- The mines, to scale ---------- */
-.mx-scene.mx-mines::before{content:'';position:absolute;inset:0;background:radial-gradient(55% 70% at 68% 52%,rgba(5,5,6,.62),rgba(5,5,6,0) 78%);pointer-events:none}
-html:has(.mx-scene.mx-mines.is-on) .mx-mark b{opacity:0}
-.mx-shafts{position:absolute;right:calc(var(--mx-edge) + 80px);top:52%;width:min(calc(66vw - var(--mx-edge) * 2 - 130px),80vh);height:auto;transform:translateY(-50%);overflow:visible;pointer-events:none}
-.mx-scene.mx-mines .mx-copy{width:min(34vw,520px)}
-.mx-scene.mx-mines .mx-name{font-size:calc(var(--mx-title) * .62);max-width:min(34vw,520px)}
-.mx-shafts .mc-ground{stroke:rgba(242,237,230,.35);stroke-width:1.2}
-.mx-shafts .mc-frame,.mx-shafts .mc-wheel{fill:none;stroke:rgba(242,237,230,.6);stroke-width:1.6}
-.mx-shafts .mc-shaft{stroke:rgba(242,237,230,.75);stroke-width:2.4;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.6s var(--mx-in)}
-.mx-shafts .mc-level{stroke:rgba(242,237,230,.35);stroke-width:1.2;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .6s 1.2s}
-.mx-shafts .mc-light{fill:#ffb35c;opacity:0;transition:opacity .6s 1.5s}
-.mx-shafts .mc-cage{fill:var(--paper);opacity:0;transition:opacity .6s 1.4s}
-.mx-shafts .mc-name{font:500 22px var(--font);fill:rgba(242,237,230,.72);opacity:0;transition:opacity .6s 1.3s}
-.mx-shafts .mc-depth{font:400 17px var(--mono);fill:rgba(242,237,230,.5);opacity:0;transition:opacity .6s 1.4s}
-.mx-shafts .deepest .mc-shaft{stroke:var(--paper);stroke-width:3}
-.mx-shafts .deepest .mc-name{fill:var(--paper)}
-.mx-shafts .mc-mine:nth-child(3) .mc-shaft{transition-delay:.12s}.mx-shafts .mc-mine:nth-child(4) .mc-shaft{transition-delay:.24s}.mx-shafts .mc-mine:nth-child(5) .mc-shaft{transition-delay:.36s}.mx-shafts .mc-mine:nth-child(6) .mc-shaft{transition-delay:.48s}
-.mx-shafts .mc-snolab circle{fill:none;stroke:#f5b335;stroke-width:1.6}
-.mx-shafts .mc-snolab text{font:400 15px var(--mono);fill:#f5b335;letter-spacing:.08em}
-.mx-shafts .mc-snolab,.mx-shafts .mc-drift,.mx-shafts .mc-miner,.mx-shafts .mc-loader{opacity:0;transition:opacity .8s 1.8s}
-.mx-shafts .mc-drift path{stroke:rgba(242,237,230,.5);stroke-width:7;stroke-linecap:round;opacity:.35}
-.mx-shafts .mc-miner .hat{fill:#f2ede6}.mx-shafts .mc-miner .body{fill:#ff7a2f}.mx-shafts .mc-miner .legs,.mx-shafts .mc-miner .drill path{stroke:#b9b2a8;stroke-width:1.6}
-.mx-shafts .mc-miner .beam,.mx-shafts .mc-loader .beam{fill:#ffd58a;opacity:.55}
-.mx-shafts .spark{fill:#ffd58a}
-.mx-shafts .mc-loader .hull{fill:#f5b335}.mx-shafts .mc-loader .bucket,.mx-shafts .mc-loader .cab{fill:#d9cfbf}.mx-shafts .mc-loader .wheel{fill:#1a1816;stroke:#5c5650;stroke-width:1}
-.mx-shafts .mc-loader .beam{opacity:.3}
-.is-on .mx-shafts .mc-shaft,.is-on .mx-shafts .mc-level{stroke-dashoffset:0}
-.is-on .mx-shafts .mc-light{opacity:.8}.is-on .mx-shafts .mc-cage{opacity:.95}.is-on .mx-shafts .mc-name,.is-on .mx-shafts .mc-depth,.is-on .mx-shafts .mc-snolab,.is-on .mx-shafts .mc-drift,.is-on .mx-shafts .mc-miner,.is-on .mx-shafts .mc-loader{opacity:1}
+/* ---------- A mine's deepest station ---------- */
+html:has(.mx-scene.mx-mine.is-on) .mx-mark b{opacity:0}
+.mx-scene.mx-mine::before{content:'';position:absolute;inset:0;background:radial-gradient(55% 60% at 66% 56%,rgba(5,5,6,.55),rgba(5,5,6,0) 78%);pointer-events:none}
+.mx-scene.mx-mine .mx-copy{width:min(34vw,520px)}
+.mx-scene.mx-mine .mx-name{font-size:calc(var(--mx-title) * .7);max-width:min(36vw,560px)}
+.mx-vig{position:absolute;right:calc(var(--mx-edge) + 64px);top:50%;width:min(calc(68vw - var(--mx-edge) * 2 - 80px),120vh);height:auto;transform:translateY(-50%);overflow:visible;pointer-events:none}
+.mx-vig .v-void,.mx-vig .v-drift{fill:rgba(6,6,7,.78)}
+.mx-vig .v-drift{stroke:rgba(242,237,230,.24);stroke-width:1.5}
+.mx-vig .v-guide{stroke:rgba(242,237,230,.4);stroke-width:1.4;fill:none}
+.mx-vig .v-bunton{stroke:rgba(242,237,230,.16);stroke-width:1;fill:none}
+.mx-vig .v-bolt{stroke:rgba(242,237,230,.3);stroke-width:2;stroke-linecap:round}
+.mx-vig .v-floor{stroke:rgba(242,237,230,.3);stroke-width:1.5}
+.mx-vig .v-light rect{fill:#ffd9a0}
+.mx-vig .v-light.off rect{fill:#3a3631}.mx-vig .v-light.off ellipse{display:none}
+.mx-vig .v-cage rect{fill:rgba(10,10,11,.6);stroke:var(--paper);stroke-width:1.6}.mx-vig .v-cage path{stroke:rgba(242,237,230,.5);stroke-width:1;fill:none}
+.mx-vig .v-hat{fill:#f2ede6}.mx-vig .v-lamp{fill:#fff1c8}.mx-vig .v-coverall{fill:#ff7a2f}.mx-vig .v-stripe{stroke:#f2ede6;stroke-width:2}.mx-vig .v-legs{stroke:#2b2826;stroke-width:3;stroke-linecap:round}
+.mx-vig .v-beam{fill:#ffe3ad;opacity:.16}
+.mx-vig .v-hull{fill:#e2a31c}.mx-vig .v-cab,.mx-vig .v-bucket{fill:#bdb4a6}.mx-vig .v-batt{fill:#3a3734}
+.mx-vig .v-wheel{fill:#141312;stroke:#5c5650;stroke-width:1.4}
+.mx-vig .v-boom{stroke:#e2a31c;stroke-width:5;stroke-linecap:round}.mx-vig .v-steel{stroke:#c9c2b8;stroke-width:2.4;stroke-linecap:round}
+.mx-vig .v-dust{fill:rgba(200,190,175,.18)}
+.mx-vig .v-blink{fill:#f5b335}
+.mx-vig .v-cam path{fill:#3a3631}.mx-vig .v-cam circle{fill:#f5b335}
+.mx-vig>*:not(defs){opacity:0;transition:opacity .7s}
+.mx-vig .v-void,.mx-vig .v-guide,.mx-vig .v-bunton{transition-delay:.1s}
+.mx-vig .v-drift,.mx-vig .v-bolt,.mx-vig .v-floor{transition-delay:.35s}
+.mx-vig .v-light{transition-delay:.6s}
+.mx-vig>g:not(.v-light){transition-delay:.85s}
+.is-on .mx-vig>*{opacity:1}
+.no-js .mx-vig>*{opacity:1}
 .mx-links{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:1.4em;opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s}
 .is-on .mx-links{opacity:1;transform:none;transition:opacity .5s .55s,transform .5s .55s var(--ease-out)}
 .mx-links .mx-go{opacity:1;transform:none}
+.mx-credit{margin-top:1.4em;max-width:52ch;font-size:var(--mx-meta);color:rgba(242,237,230,.6);opacity:0;transition:opacity .5s .6s}
+.is-on .mx-credit,.no-js .mx-credit{opacity:1}
 
 /* Without JavaScript every scene simply reads top to bottom. */
 .no-js .mx-name i,.no-js .mx-formula,.no-js .mx-text,.no-js .mx-lede,.no-js .mx-note,.no-js .mx-found,.no-js .mx-go,.no-js .mx-sources,.no-js .mx-links{opacity:1;filter:none;transform:none}
-.no-js .mx-shafts *{opacity:1;stroke-dashoffset:0}
 
 html:has(.mx) .site-footer{position:relative;z-index:4;scroll-snap-align:end}
 
@@ -167,11 +170,9 @@ html:has(.mx) .site-footer{position:relative;z-index:4;scroll-snap-align:end}
   .mx-name{font-stretch:75%;max-width:calc(100vw - 32px)}
   .mx-text,.mx-lede{max-width:32ch}
   .mx-end .mx-copy{bottom:8vh;right:56px}
-  .mx-shafts{left:12px;right:auto;top:146px;width:calc(100% - 76px);max-height:44vh;transform:none}
-  .mx-scene.mx-mines .mx-copy{width:auto}
-  .mx-scene.mx-robot .mx-copy{bottom:7vh}
-  .mx-scene.mx-mines .mx-name{font-size:var(--mx-title);max-width:calc(100vw - 92px)}
-  .mx-scene.mx-mines .mx-copy{bottom:8vh}
+  .mx-vig{left:8px;right:auto;top:150px;width:calc(100% - 64px);transform:none}
+  .mx-scene.mx-mine .mx-copy{width:auto;bottom:9vh}
+  .mx-scene.mx-mine .mx-name{font-size:var(--mx-title);max-width:calc(100vw - 92px)}
   .mx-end .mx-name{font-size:clamp(34px,10vw,56px)}
 }
 @media (prefers-reduced-motion:reduce){

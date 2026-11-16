@@ -232,9 +232,25 @@ export function createStage(canvas){
       for(const[x,z]of[[.78,.5],[.78,-.5],[-.56,.5],[-.56,-.5]]){const t=new THREE.Mesh(wheel,tire),r=new THREE.Mesh(rim,dark);for(const m of[t,r]){m.rotation.x=Math.PI/2;m.position.set(x,.24,z);g.add(m);}}
       for(const z of[.16,.4])box(.03,.05,.07,lamp,-.03,.72,z,.01);for(const z of[-.3,.3])box(.03,.05,.08,lamp,-.88,.5,z,.01);
       g.position.set(.42,-.4,0);const wrap=new THREE.Group().add(g);wrap.scale.setScalar(.98);wrap.rotation.set(.22,0,0);return wrap;},
-    robot(){
-      // EDIT Saffron's robot this season: the same CAD export and finishes as the home page.
-      const g=new THREE.Group();loadRobot().then(r=>{if(r)g.add(r);bgDirty=true;});return g;},
+    teleop(){
+      // Remote control: the 1993 teleoperated loader beside our robot, which spends two minutes of every match driven the same way.
+      const g=new THREE.Group(),l=builders.loader();l.position.x=-.78;g.add(l);
+      const slot=new THREE.Group();g.add(slot);
+      withRobot(r=>{r.scale.multiplyScalar(.34);r.rotation.set(0,.9,0);r.updateMatrixWorld(true);
+        const box=new THREE.Box3().setFromObject(r);r.position.set(1.55-(box.min.x+box.max.x)/2,-.36-box.min.y,.45-(box.min.z+box.max.z)/2);slot.add(r);});
+      g.userData.size=.72;g.userData.narrow=.78;return g;},
+    auto(){
+      // Autonomous: our robot drives its own figure-eight across foam field tiles, leaving a trail.
+      const g=new THREE.Group(),N=4,T=.62,tiles=new THREE.InstancedMesh(new RoundedBoxGeometry(T-.012,.05,T-.012,2,.01),new THREE.MeshStandardMaterial({color:'#2c2c30',roughness:.95,envMapIntensity:.45}),N*N),o=new THREE.Object3D();
+      for(let i=0;i<N*N;i++){o.position.set((i%N-(N-1)/2)*T,-.025,(Math.floor(i/N)-(N-1)/2)*T);o.updateMatrix();tiles.setMatrixAt(i,o.matrix);}g.add(tiles);
+      const path=t=>new THREE.Vector3(Math.sin(t)*.82,0,Math.sin(2*t)*.5),plan=[];for(let i=0;i<=200;i++)plan.push(path(i/200*Math.PI*2).setY(.004));
+      const planLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(plan),new THREE.LineDashedMaterial({color:'#f2ede6',transparent:true,opacity:.35,dashSize:.05,gapSize:.04}));planLine.computeLineDistances();g.add(planLine);
+      const TRAIL=90,trail=new THREE.InstancedMesh(new THREE.CylinderGeometry(.022,.022,.004,12),new THREE.MeshBasicMaterial({color:'#ef3326',toneMapped:false}),TRAIL),mark=new THREE.Object3D();trail.frustumCulled=false;trail.count=0;g.add(trail);
+      const bot=new THREE.Group();g.add(bot);withRobot(r=>{r.scale.multiplyScalar(.25);r.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(r);r.position.y-=box.min.y;bot.add(r);});
+      let t=0;const hist=[];
+      g.userData={baseX:.62,spinRate:.25,size:1.05,tick(dt){t+=dt*.42;const p=path(t),n=path(t+.01);bot.position.copy(p);bot.rotation.y=Math.atan2(n.x-p.x,n.z-p.z)+ROBOT_FORWARD;
+        hist.unshift(p.clone().setY(.006));if(hist.length>TRAIL)hist.pop();trail.count=hist.length;hist.forEach((q,i)=>{mark.position.copy(q);mark.scale.setScalar(Math.max(.05,1-i/TRAIL));mark.updateMatrix();trail.setMatrixAt(i,mark.matrix);});trail.instanceMatrix.needsUpdate=true;}};
+      return g;},
     snolab(){const g=new THREE.Group();const R=1.05;
       g.add(new THREE.Mesh(new THREE.SphereGeometry(R*.96,64,48),new THREE.MeshPhysicalMaterial({color:'#9cc7d8',roughness:.05,metalness:0,transparent:true,opacity:.18,envMapIntensity:1.6})));
       g.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(R*1.12,2)),new THREE.LineBasicMaterial({color:'#c9b27a',transparent:true,opacity:.42})));
@@ -248,11 +264,13 @@ export function createStage(canvas){
   let bgDepth=NaN,bgDirty=true,blur=0,prevDepth=0,lampBase=[.5,.5],lamp=[.5,.5],lampPtr=[0,0],hovering=false;
   const cache={},build=key=>cache[key]||(cache[key]=builders[key]());
   let robotPromise=null;
+  const ROBOT_FORWARD=0;
+  const withRobot=fn=>loadRobot().then(r=>{if(r)fn(r.clone(true));bgDirty=true;});
   function loadRobot(){
     if(robotPromise)return robotPromise;
     robotPromise=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(__ROBOT__).then(gltf=>{
       const r=gltf.scene;finishRobot(r);const box=new THREE.Box3().setFromObject(r),size=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3());
-      r.position.sub(c);const wrap=new THREE.Group();wrap.add(r);wrap.scale.setScalar(2.05/Math.max(size.x,size.y,size.z));wrap.rotation.set(.22,-.6,0);return wrap;
+      r.position.sub(c);const wrap=new THREE.Group();wrap.add(r);wrap.scale.setScalar(2.05/Math.max(size.x,size.y,size.z));return wrap;
     }).catch(()=>null);
     return robotPromise;
   }
@@ -284,10 +302,10 @@ export function createStage(canvas){
     if(Math.abs(depth-bgDepth)>.004)bgDirty=true;
     const speed=Math.abs(depth-prevDepth)/Math.max(dt,.001);prevDepth=depth;const nb=reduced.matches?0:Math.min(.035,speed/SCALE*.02);const blurChanged=Math.abs(nb-blur)>.0002||(nb===0&&blur>0);blur+=(nb-blur)*.5;if(blur<.0004)blur=0;
     let animating=false;
-    if(leaving){animating=true;leaving.t+=dt/(reduced.matches?.01:.45);const e=easeOut(Math.min(1,leaving.t));leaving.g.scale.setScalar(Math.max(.001,1-e*.9));leaving.g.position.y=e*1.4;if(leaving.t>=1){holder.remove(leaving.g);leaving.g.position.y=0;leaving=null;}}
-    if(current){animating=true;current.userData.t=Math.min(1,current.userData.t+dt/(reduced.matches?.01:.85));const t=Math.max(0,current.userData.t*1.2-.2),e=easeOut(t);current.scale.setScalar(Math.max(.001,.92*e+.08*e*e));
+    if(leaving){animating=true;leaving.t+=dt/(reduced.matches?.01:.45);const e=easeOut(Math.min(1,leaving.t));leaving.g.scale.setScalar(Math.max(.001,(1-e*.9)*(leaving.g.userData.size||1)));leaving.g.position.y=e*1.4;if(leaving.t>=1){holder.remove(leaving.g);leaving.g.position.y=0;leaving=null;}}
+    if(current){animating=true;current.userData.t=Math.min(1,current.userData.t+dt/(reduced.matches?.01:.85));const t=Math.max(0,current.userData.t*1.2-.2),e=easeOut(t),cu=current.userData,fit=(cu.size||1)*(w/h<1.05?(cu.narrow||1):1);current.scale.setScalar(Math.max(.001,(.92*e+.08*e*e)*fit));
       if(!drag){velocity*=Math.pow(.92,dt*60);spin+=velocity*dt+(reduced.matches?0:dt*.15);}
-      current.rotation.y=spin-1.2*(1-easeOut(t));tiltX+=(ptr[1]*.18-tiltX)*.06;tiltY+=(ptr[0]*.25-tiltY)*.06;current.rotation.x=tiltX;current.position.y=-(1-e)*1.1+(reduced.matches?0:Math.sin(now/1400)*.04);holder.rotation.y=tiltY;}
+      const u=current.userData;u.tick?.(dt);current.rotation.y=spin*(u.spinRate??1)-1.2*(1-easeOut(t));tiltX+=(ptr[1]*.18-tiltX)*.06;tiltY+=(ptr[0]*.25-tiltY)*.06;current.rotation.x=tiltX+(u.baseX||0);current.position.y=-(1-e)*1.1+(reduced.matches?0:Math.sin(now/1400)*.04);holder.rotation.y=tiltY;}
     // Skip the frame entirely when nothing on screen has changed.
     if(!bgDirty&&!animating&&!blurChanged&&!blur)return;
     if(bgDirty){bgMat.uniforms.uDepth.value=depth;bgMat.uniforms.uLight.value.set(lamp[0],lamp[1]);renderer.setRenderTarget(target);renderer.render(bgScene,flat);renderer.setRenderTarget(null);bgDepth=depth;bgDirty=false;}
@@ -303,7 +321,7 @@ export function createStage(canvas){
 
   // Build every specimen and compile its shaders during idle time, in story order,
   // so arriving at a scene never stalls on geometry or shader compilation.
-  const queue=STORY.filter(s=>s.key&&s.key!=='robot').map(s=>s.key),idle=window.requestIdleCallback||(f=>setTimeout(()=>f({timeRemaining:()=>8}),60));
+  const queue=STORY.filter(s=>s.key&&!['teleop','auto'].includes(s.key)).map(s=>s.key).concat(['loader']),idle=window.requestIdleCallback||(f=>setTimeout(()=>f({timeRemaining:()=>8}),60));
   const warm=new THREE.Scene();warm.environment=env;warm.add(key.clone(),rim.clone(),bounce.clone());
   function prewarm(deadline){
     while(queue.length&&deadline.timeRemaining()>6){const k=queue.shift();const g=build(k);if(g.parent)continue;warm.add(g);

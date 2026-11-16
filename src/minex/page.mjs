@@ -1,5 +1,5 @@
 // Static markup for 22310.ca/minex: a scroll-stop descent, one scene per screen.
-import {STORY,SOURCES,MINES} from './data.js';
+import {STORY,SOURCES} from './data.js';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=m=>Math.round(m).toLocaleString('en-CA');
@@ -66,52 +66,58 @@ const skyline=`<svg class="mx-skyline" viewBox="0 0 1600 420" preserveAspectRati
   <g class="lay-near">${headframe(436,140,412)}${nickel}<path class="near" d="${ridge(13,414,6,50)}"/><path class="near" d="${treeline(17,0,330,414,26,58,13)}${treeline(23,1500,1600,414,30,64,12)}"/>${birches(29,250,420,414)}${birches(31,1270,1360,414)}<rect class="near" x="0" y="414" width="1600" height="6"/></g>
 </svg>`;
 
-// ---------- the mines, to scale ----------
-function minesChart(){
-  const top=70,k=.22,dx=140,x0=95;let s='';
-  s+=`<path class="mc-ground" d="M24 ${top}H736"/>`;
-  MINES.forEach((m,i)=>{
-    const x=x0+i*dx,yb=top+m.depth*k,deepest=i===MINES.length-1;
-    s+=`<g class="mc-mine${deepest?' deepest':''}">`;
-    s+=`<path class="mc-frame" d="M${x-11} ${top}L${x} ${top-28}L${x+11} ${top}M${x} ${top-28}V${top}"/><circle class="mc-wheel" cx="${x}" cy="${top-30}" r="4"/>`;
-    s+=`<line class="mc-shaft" x1="${x}" y1="${top}" x2="${x}" y2="${r1(yb)}" pathLength="1"/>`;
-    for(let d=300;d<m.depth-80;d+=300){const y=r1(top+d*k),side=(i+d/300)%2?-1:1;s+=`<line class="mc-level" x1="${x}" y1="${y}" x2="${x+side*16}" y2="${y}" pathLength="1"/><circle class="mc-light" cx="${x+side*18}" cy="${y}" r="1.6"/>`;}
-    const travel=r1(m.depth*k-14),dur=(5.5+m.depth/700).toFixed(1);
-    s+=`<rect class="mc-cage" x="${x-5}" y="${top}" width="10" height="13" rx="1.5"><animateTransform attributeName="transform" type="translate" values="0 0;0 ${travel};0 ${travel};0 0;0 0" keyTimes="0;.42;.5;.92;1" calcMode="spline" keySplines=".65 0 .35 1;0 0 1 1;.65 0 .35 1;0 0 1 1" dur="${dur}s" begin="${(i*.9).toFixed(1)}s" repeatCount="indefinite"/></rect>`;
-    const ly=yb+30;s+=`<text class="mc-name" x="${x}" y="${r1(ly)}" text-anchor="middle">${m.lines.map((l,j)=>`<tspan x="${x}" dy="${j?24:0}">${esc(l)}</tspan>`).join('')}</text>`;
-    s+=`<text class="mc-depth" x="${x}" y="${r1(ly+24*m.lines.length)}" text-anchor="middle">${m.approx?'~':''}${fmt(m.depth)} m</text></g>`;
-  });
-  // SNOLAB inside Creighton, a miner drilling at Creighton's deepest face,
-  // and a battery-electric loader running the bottom drift at Onaping Depth.
-  const cx=x0+3*dx,cy=top+2380*k,sy=top+2070*k,ox=x0+4*dx,oy=top+2600*k;
-  s+=`<g class="mc-snolab"><circle cx="${cx}" cy="${r1(sy)}" r="7"/><text x="${cx-14}" y="${r1(sy+5)}" text-anchor="end">SNOLAB</text></g>`;
-  s+=`<g class="mc-drift"><path d="M${cx} ${r1(cy)}H${cx+52}"/></g>
-    <g class="mc-miner" transform="translate(${cx+40} ${r1(cy)})"><circle class="hat" cx="0" cy="-15" r="3.2"/><path class="body" d="M-2.5 -12H2.5V-3H-2.5Z"/><path class="legs" d="M-2 -3V0M2 -3V0"/>
-      <g class="drill"><path d="M2 -9H11"/><animateTransform attributeName="transform" type="translate" values="0 0;.8 .2;0 0" dur=".12s" repeatCount="indefinite"/></g>
-      <circle class="beam" cx="3" cy="-15" r="1.2"/>
-      ${[0,1,2].map(i=>`<circle class="spark" cx="12" cy="-9" r=".9"><animate attributeName="cx" values="12;${15+i*2}" dur="${(.35+i*.12).toFixed(2)}s" repeatCount="indefinite"/><animate attributeName="cy" values="-9;${-13+i*3}" dur="${(.35+i*.12).toFixed(2)}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="${(.35+i*.12).toFixed(2)}s" repeatCount="indefinite"/></circle>`).join('')}
-    </g>`;
-  s+=`<g class="mc-drift"><path d="M${ox} ${r1(oy)}H${ox-80}"/></g>
-    <g class="mc-loader"><g><path class="beam" d="M${ox-74} ${r1(oy-6)}L${ox-96} ${r1(oy-13)}V${r1(oy+1)}Z"/><path class="bucket" d="M${ox-74} ${r1(oy-9)}L${ox-68} ${r1(oy-9)}L${ox-66} ${r1(oy-2)}H${ox-76}Z"/><rect class="hull" x="${ox-66}" y="${r1(oy-11)}" width="24" height="8" rx="1.5"/><rect class="cab" x="${ox-52}" y="${r1(oy-15)}" width="7" height="4"/><circle class="wheel" cx="${ox-61}" cy="${r1(oy-2)}" r="2.6"/><circle class="wheel" cx="${ox-47}" cy="${r1(oy-2)}" r="2.6"/>
-      <animateTransform attributeName="transform" type="translate" values="0 0;48 0;48 0;0 0;0 0" keyTimes="0;.4;.5;.9;1" calcMode="spline" keySplines=".5 0 .5 1;0 0 1 1;.5 0 .5 1;0 0 1 1" dur="7s" repeatCount="indefinite"/></g></g>`;
-  return`<svg class="mx-shafts" viewBox="0 0 760 720" role="img" aria-label="Deepest workings of five Sudbury mines, to scale: ${MINES.map(m=>`${m.name} ${m.approx?'about ':''}${fmt(m.depth)} metres`).join(', ')}.">${s}</svg>`;
+// ---------- a mine's deepest station, in cutaway ----------
+// The shaft drops in from above and opens onto a lit drift. Each mine has its own scene:
+// Nickel Rim South sits idle, Garson is drilling, Creighton is busy, Onaping Depth runs itself.
+const anim=(attr,values,dur,extra='')=>`<animateTransform attributeName="transform" type="${attr}" values="${values}" dur="${dur}s" repeatCount="indefinite" ${extra}/>`;
+const sway=(vals,dur,kt='0;.42;.5;.92;1')=>anim('translate',vals,dur,`keyTimes="${kt}" calcMode="spline" keySplines=".55 0 .45 1;0 0 1 1;.55 0 .45 1;0 0 1 1"`);
+function miner(x,face=1,walk=0){
+  const beam=`<path class="v-beam" d="M${4*face} -27L${46*face} -40V-8Z"/>`;
+  const body=`<g class="v-miner" transform="translate(${x} 466)">${beam}<circle class="v-hat" cx="0" cy="-30" r="5"/><circle class="v-lamp" cx="${4*face}" cy="-31" r="1.6"/><path class="v-coverall" d="M-5 -24H5V-8H-5Z"/><path class="v-stripe" d="M-5 -15H5"/><path class="v-legs" d="M-3 -8V0M3 -8V0"/></g>`;
+  return walk?`<g>${body}${sway(`0 0;${walk} 0;${walk} 0;0 0;0 0`,9)}</g>`:body;
+}
+function loaderSvg(x,dist,dur,auto=false){
+  const g=`<g class="v-loader" transform="translate(${x} 466)"><path class="v-beam" d="M-44 -18L-110 -38V2Z"/><path class="v-bucket" d="M-44 -26L-30 -26L-26 -6H-48Z"/><path class="v-hull" d="M-28 -30H26V-10H-28Z"/><path class="v-batt" d="M2 -40H24V-30H2Z"/><path class="v-cab" d="M-14 -40H-2V-30H-14Z"/><circle class="v-wheel" cx="-16" cy="-6" r="7"/><circle class="v-wheel" cx="16" cy="-6" r="7"/>${auto?'<circle class="v-blink" cx="13" cy="-44" r="2.4"><animate attributeName="opacity" values="1;.15;1" dur="1.2s" repeatCount="indefinite"/></circle>':''}</g>`;
+  return `<g>${g}${sway(`0 0;${dist} 0;${dist} 0;0 0;0 0`,dur)}</g>`;
+}
+function jumbo(x){
+  return `<g class="v-jumbo" transform="translate(${x} 466)"><path class="v-hull" d="M0 -26H70V-8H0Z"/><path class="v-cab" d="M46 -44H66V-26H46Z"/><circle class="v-wheel" cx="14" cy="-6" r="7"/><circle class="v-wheel" cx="56" cy="-6" r="7"/>
+    <path class="v-boom" d="M4 -22L-36 -40"/><g>${'<path class="v-steel" d="M-36 -40L-62 -46"/>'}${anim('translate','0 0;-4 1;0 0',.16)}</g>
+    ${[0,1,2,3].map(i=>`<circle class="v-dust" cx="-62" cy="-46" r="${3+i}"><animate attributeName="opacity" values=".6;0" dur="${1.1+i*.3}s" begin="${i*.3}s" repeatCount="indefinite"/><animate attributeName="r" values="2;${10+i*4}" dur="${1.1+i*.3}s" begin="${i*.3}s" repeatCount="indefinite"/></circle>`).join('')}</g>`;
+}
+function vignette(kind){
+  const idle=kind==='nrs';let s='';
+  s+=`<defs><radialGradient id="vg-${kind}"><stop offset="0" stop-color="#ffb35c" stop-opacity=".42"/><stop offset="1" stop-color="#ffb35c" stop-opacity="0"/></radialGradient></defs>`;
+  // Shaft: steel guides and buntons dropping in from above.
+  s+=`<rect class="v-void" x="300" y="-120" width="40" height="508"/><path class="v-guide" d="M308 -120V386M332 -120V386"/>`;
+  let b='';for(let y=-110;y<380;y+=34)b+=`M300 ${y}H340`;s+=`<path class="v-bunton" d="${b}"/>`;
+  // The station: a long drift with rock bolts and lights.
+  s+=`<rect class="v-drift" x="34" y="384" width="572" height="86" rx="22"/>`;
+  let bolts='';for(let x=58;x<590;x+=22)if(x<296||x>344)bolts+=`M${x} 390v4`;s+=`<path class="v-bolt" d="${bolts}"/><path class="v-floor" d="M48 466H592"/>`;
+  for(const x of[110,220,420,530])s+=`<g class="v-light${idle?' off':''}"><ellipse cx="${x}" cy="420" rx="70" ry="52" fill="url(#vg-${kind})"/><rect x="${x-9}" y="388" width="18" height="4" rx="1"/></g>`;
+  // The cage: cycling up and down, or parked where it was left.
+  const cage=`<g class="v-cage"><rect x="304" y="0" width="32" height="46" rx="2"/><path d="M304 16H336M320 0V46"/></g>`;
+  s+=idle?`<g transform="translate(0 420)">${cage}</g>`:`<g>${cage}${sway('0 -140;0 420;0 420;0 -140;0 -140',kind==='creighton'?8:11,'0;.4;.55;.95;1')}</g>`;
+  if(kind==='garson')s+=jumbo(130)+miner(240,-1)+miner(470,1,28);
+  if(kind==='creighton')s+=miner(380,1,90)+miner(268,-1)+loaderSvg(540,-120,9);
+  if(kind==='onaping')s+=loaderSvg(560,-210,11,true)+`<g class="v-cam"><path d="M150 392H166V400H150Z"/><circle cx="158" cy="403" r="2"><animate attributeName="opacity" values="1;.2;1" dur="2s" repeatCount="indefinite"/></circle></g>`;
+  return `<svg class="mx-vig mx-vig-${kind}" viewBox="24 196 592 290" aria-hidden="true" focusable="false">${s}</svg>`;
 }
 
 // ---------- scenes ----------
 const letters=t=>`<span aria-hidden="true">${t.split(' ').map(w=>`<b class="w">${[...w].map(c=>`<i>${esc(c)}</i>`).join('')}</b>`).join(' ')}</span>`;
 const scene=(s,i)=>{
   const id=`stop-${i+1}`,has=s.key;
-  const extra=s.kind==='mines'?minesChart():'';
-  const links=s.kind==='robot'?`<p class="mx-links"><a class="mx-go" href="/team/">Meet the team ${arrow}</a><a class="mx-go" href="/sponsors/">Back our season ${arrow}</a></p>`:'';
+  const extra=s.kind==='mine'?vignette(s.mine):'';
   return `<section class="mx-scene mx-${s.kind}" id="${id}" data-depth="${s.depth}"${has?` data-specimen="${s.key}"`:''} aria-labelledby="${id}-t">
   ${extra}<div class="mx-copy">
     <h2 class="mx-name" id="${id}-t" aria-label="${esc(s.title)}">${letters(s.title)}</h2>
     ${s.formula?`<p class="mx-formula">${s.formula}</p>`:''}
     <p class="mx-text">${esc(s.text)}</p>
-    ${s.note?`<p class="mx-note">${esc(s.note)}</p>`:''}${links}
+    ${s.note?`<p class="mx-note">${esc(s.note)}</p>`:''}
   </div>
 </section>`;};
-const finds=STORY.map((s,i)=>[s,i]).filter(([s])=>s.kind==='mineral'||s.kind==='find');
+const finds=STORY.map((s,i)=>[s,i]).filter(([s])=>s.kind!=='layer');
 
 export const minexBody=`<main tabindex="-1" id="main" class="mx">
 <canvas class="mx-stage" aria-hidden="true"></canvas>
@@ -130,7 +136,8 @@ ${STORY.map(scene).join('\n')}
   <div class="mx-copy">
     <h2 class="mx-name" id="mx-end-t" aria-label="What you found">${letters('What you found')}</h2>
     <ol class="mx-found">${finds.map(([s,i])=>`<li><a href="#stop-${i+1}"><span>${esc(s.title)}</span><em>${fmt(s.depth)} m</em></a></li>`).join('')}</ol>
-    <a class="mx-go" href="#top">Back to the surface ${up}</a>
+    <p class="mx-links"><a class="mx-go" href="#top">Back to the surface ${up}</a><a class="mx-go" href="/team/">Meet the team ${arrow}</a><a class="mx-go" href="/sponsors/">Back our season ${arrow}</a></p>
+    <p class="mx-credit">Minex is made by EDIT Saffron, FTC Team 22310, at Lo-Ellen Park Secondary School in Greater Sudbury.</p>
     <p class="mx-sources">Sources: ${SOURCES.map(([t,u])=>`<a href="${u}" target="_blank" rel="noreferrer">${esc(t)}</a>`).join(', ')}. Layers are stacked into one shaft for the story; the real basin is a tilted bowl.</p>
   </div>
 </section>
