@@ -66,8 +66,6 @@ requestAnimationFrame(tick);
 const canvas=document.querySelector('.mx-stage');
 const load=()=>import('./stage.js').then(m=>{try{stage=m.createStage(canvas);stage.setDepth(depth);shown=-1;html.classList.add('mx-gl');}catch{html.classList.add('mx-nogl');return;}
   // Our robot drives the lakeshore on the surface. It shares the stage's copy of the model.
-  const rc=document.querySelector('.mx-rover');import('./rover.js').then(r=>{try{const tag=document.querySelector('.mx-rover-tag');let tagW=0;
-    rover=r.createRover(rc,stage.robot(),(fx,unit)=>{tagW=tagW||tag.offsetWidth;const lift=unit*1.25+skyH*.009+3;tag.style.transform=`translate3d(${Math.round(fx*innerWidth-tagW/2)}px,${-Math.round(lift)}px,0)`;});
-    rover.setActive(skyOn);stage.robot().then(x=>{if(x){rc.classList.add('on');setTimeout(()=>tag.classList.add('on'),900);}});}catch{}});}).catch(()=>html.classList.add('mx-nogl'));
+  const rc=document.querySelector('.mx-rover');import('./rover.js').then(r=>{try{rover=r.createRover(rc,stage.robot());rover.setActive(skyOn);stage.robot().then(x=>x&&rc.classList.add('on'));}catch{}});}).catch(()=>html.classList.add('mx-nogl'));
 'requestIdleCallback' in window?requestIdleCallback(load,{timeout:600}):setTimeout(load,120);
 requestAnimationFrame(()=>html.classList.add('mx-ready'));

@@ -5,15 +5,16 @@ import * as THREE from 'three';
 import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-export function createRover(canvas,robotPromise,onMove){
+export function createRover(canvas,robotPromise){
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'low-power'});
-  renderer.setClearColor(0x000000,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  renderer.setClearColor(0x000000,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
   const pmrem=new THREE.PMREMGenerator(renderer),scene=new THREE.Scene();scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;pmrem.dispose();
-  scene.environmentIntensity=.45;
-  // Dusk light: a warm glow from the sunset on the right, a cool sky from above.
-  scene.add(new THREE.HemisphereLight(0x5a5878,0x2a160c,.9));
-  const sun=new THREE.DirectionalLight(0xffa868,2.6);sun.position.set(6,2.5,4);scene.add(sun);
-  const rim=new THREE.DirectionalLight(0x8fa6ff,.9);rim.position.set(-5,4,-4);scene.add(rim);
+  scene.environmentIntensity=.12;
+  // Dusk light to match the skyline: the sun is down behind the far shore, so the robot is mostly
+  // in shadow with a warm rim along its top and back edges, plus a faint cool fill from the sky.
+  scene.add(new THREE.HemisphereLight(0x2c2d3e,0x0b0706,.5));
+  const sun=new THREE.DirectionalLight(0xff8a4a,1.5);sun.position.set(3,1.4,-5);scene.add(sun);
+  const fill=new THREE.DirectionalLight(0x6f7fae,.38);fill.position.set(-2,3,5);scene.add(fill);
   const camera=new THREE.OrthographicCamera(-1,1,1,0,-20,20);camera.position.set(0,0,10);
 
   // A soft contact shadow so the robot sits on the ground rather than floating over it.
@@ -47,7 +48,7 @@ export function createRover(canvas,robotPromise,onMove){
       else{x+=dir*dt*.62;if((dir>0&&x>edge)||(dir<0&&x<-edge)){dir=-dir;turn=1;}yaw+=(dir*Math.PI/2-yaw)*(1-Math.exp(-dt*5));}
     }else{yaw=Math.PI/2;}
     rover.position.x=x;body.rotation.y=yaw;body.position.y=reduced.matches?0:Math.abs(Math.sin(t*11))*.012;
-    renderer.render(scene,camera);onMove?.((x+halfW)/(2*halfW),canvas.clientHeight/(camera.top-camera.bottom));
+    renderer.render(scene,camera);
     if(!reduced.matches)raf=requestAnimationFrame(frame);
   }
   function kick(){if(active&&ready&&!raf){last=0;raf=requestAnimationFrame(frame);}}
