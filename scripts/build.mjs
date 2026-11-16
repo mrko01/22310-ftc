@@ -63,7 +63,7 @@ await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/styles/pages
 await build({entryPoints:['src/site.js'],outfile:'dist/assets/site.js',bundle:true,format:'esm',minify:true,target:'es2022'});
 // Minex (the Sudbury mining simulator at /minex/) ships its own script and styles.
 // three.js is split into its own chunk and loaded after first paint.
-const minex=await build({entryPoints:{minex:'src/minex/main.js'},outdir:'dist/assets/minex',bundle:true,splitting:true,format:'esm',minify:true,target:'es2022',entryNames:'[name]-[hash]',chunkNames:'chunk-[hash]',metafile:true});
+const minex=await build({entryPoints:{minex:'src/minex/main.js'},outdir:'dist/assets/minex',bundle:true,splitting:true,format:'esm',minify:true,target:'es2022',entryNames:'[name]-[hash]',chunkNames:'chunk-[hash]',metafile:true,define:{__ROBOT__:JSON.stringify('/assets/robot-mobile.glb?v='+assetHash['robot-mobile.glb'])}});
 const minexEntry=Object.entries(minex.metafile.outputs).find(([,o])=>o.entryPoint==='src/minex/main.js')[0].replace(/^dist/,'');
 await cssBundle(['src/styles/tokens.css','src/styles/base.css','src/minex/minex.css'],'dist/assets/minex.css');
 const cssHash=hash(readFileSync('dist/assets/site.css')),jsHash=hash(readFileSync('dist/assets/site.js')),homeCSSHash=hash(readFileSync('dist/assets/home.css'));

@@ -25,6 +25,7 @@ export const STORY=[
   {kind:'layer',depth:300,title:'Granophyre',text:'The impact melted the crust into a sea of molten rock that cooled in layers. This pink rock is its top.'},
   {kind:'mineral',depth:380,key:'magnetite',title:'Magnetite',formula:'Fe<sub>3</sub>O<sub>4</sub>',text:'The most magnetic mineral on Earth, growing as small black eight-sided crystals.',note:'In 1856 a surveyor recorded strange compass readings near here.'},
   {kind:'layer',depth:720,title:'Norite',text:'The dark bottom of the melt sheet. As it cooled, heavy liquid full of metal sank through it like drops of oil in water.'},
+  {kind:'machine',depth:914,key:'loader',title:'Teleremote',text:'In 1993, at Inco’s Copper Cliff North Mine, an operator on the surface drove a loader on the 914-metre level. Later that year, one person ran several at once.',note:'Today Vale watches its five Ontario mines from one remote operating centre in Sudbury.'},
   {kind:'layer',depth:1000,title:'The contact',text:'At the base of the melt sheet that liquid pooled and froze into ore. Sudbury was built on what is down here.'},
   {kind:'mineral',depth:1060,key:'pyrrhotite',title:'Pyrrhotite',formula:'Fe<sub>1−x</sub>S',text:'The most common mineral in the ore. Bronze, plate-shaped, and magnetic.',note:'Mostly iron, but it carries nickel and platinum metals.'},
   {kind:'mineral',depth:1160,key:'pentlandite',title:'Pentlandite',formula:'(Fe,Ni)<sub>9</sub>S<sub>8</sub>',text:'The nickel. Pale grains that grow inside pyrrhotite. A magnet grabs the pyrrhotite and leaves these behind.',note:'About 35% nickel. Most nickel becomes stainless steel.'},
@@ -36,6 +37,17 @@ export const STORY=[
   {kind:'find',depth:2070,key:'snolab',title:'SNOLAB',text:'A clean physics lab two kilometres down, inside Creighton Mine. The rock overhead blocks cosmic rays so detectors can catch neutrinos.',note:'Work here shared the 2015 Nobel Prize in Physics.'},
   {kind:'mineral',depth:2250,key:'froodite',title:'Froodite',formula:'PdBi<sub>2</sub>',text:'Palladium, in grains too small to see without a microscope. Named after Sudbury’s Frood mine.',note:'Shown many times larger than life.'},
   {kind:'mineral',depth:2450,key:'gold',title:'Native gold',formula:'Au',text:'Specks of gold among the copper ore, recovered as a by-product.',note:'The rock down here is about 46 °C.'},
+  {kind:'mines',depth:2600,title:'How deep it goes',text:'Creighton has been mined since 1901 and reaches 2.4 km, more than four CN Towers down. Glencore’s Onaping Depth goes deeper still.',note:'Depths marked ~ are approximate.'},
+  {kind:'robot',depth:2600,key:'robot',title:'Built in Sudbury',text:'Onaping Depth reached ore 2.6 km down in 2026, built to be run from the surface. We’re EDIT Saffron, FTC Team 22310. This is our robot.',note:'Designed in Fusion and built by students at Lo-Ellen Park Secondary School.'},
+];
+
+// Deepest workings of some of Sudbury's best-known mines (metres below surface).
+export const MINES=[
+  {name:'Nickel Rim South',lines:['Nickel Rim','South'],depth:1720},
+  {name:'Coleman',lines:['Coleman'],depth:1830,approx:true},
+  {name:'Garson',lines:['Garson'],depth:1980,approx:true},
+  {name:'Creighton',lines:['Creighton'],depth:2380},
+  {name:'Onaping Depth',lines:['Onaping','Depth'],depth:2600,approx:true},
 ];
 
 export const SOURCES=[
@@ -45,4 +57,8 @@ export const SOURCES=[
   ['SNOLAB','https://www.snolab.ca/about/about-snolab/'],
   ['Sudbury Basin','https://en.wikipedia.org/wiki/Sudbury_Basin'],
   ['Creighton Mine','https://en.wikipedia.org/wiki/Creighton_Mine'],
+  ['Garson Mine','https://miningdataonline.com/property/41/Garson-Mine.aspx'],
+  ['CIM, LHD teleoperation (1993)','https://onemine.org/documents/lhd-teleoperation-and-guidance-proven-productivity-improvement-tools'],
+  ['CIM Magazine, Vale remote operations','https://magazine.cim.org/en/news/2024/vale-goes-remote-en'],
+  ['Glencore, Onaping Depth','https://www.glencore.com/media-and-insights/insights/2026-09-glencore-canada-onaping-depth-project-milestone'],
 ];

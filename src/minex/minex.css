@@ -17,23 +17,51 @@ html:has(.mx) body{background:#050506}
 .mx-stage{position:fixed;inset:0;z-index:0;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity 1.4s ease}
 .mx-gl .mx-stage{opacity:1}
 .mx-nogl .mx{background:linear-gradient(#0b0a0e 0,#1a1410 30%,#120f0d 60%,#070606)}
-.mx-sky{position:fixed;left:0;right:0;top:0;z-index:1;height:max(25vw,170px);pointer-events:none;will-change:transform}
+.mx-sky{position:fixed;left:0;right:0;top:0;z-index:1;height:clamp(200px,31vw,560px);pointer-events:none;will-change:transform}
 .mx-sky.gone{visibility:hidden}
 .mx-skyline{display:block;width:100%;height:100%}
-.mx-skyline .far{fill:#18141b}
-.mx-skyline .mid{fill:#0f0d12}
+.mx-skyline .far{fill:#1d1820}
+.mx-skyline .mid{fill:#100d13}
 .mx-skyline .near{fill:#070608}
 .mx-skyline .fill{fill:#0c0b0e}
-.mx-stack .fill{fill:#141117}
-.mx-stack .band{stroke:rgba(242,237,230,.07);stroke-width:2;fill:none}
+.mx-skyline .lamp{fill:#ffb35c;opacity:.55}
+.mx-skyline .tw{animation:mx-twinkle 3.4s ease-in-out infinite}
+.mx-skyline .tw:nth-of-type(3n){animation-delay:-1.2s}.mx-skyline .tw:nth-of-type(3n+1){animation-delay:-2.3s}
+@keyframes mx-twinkle{50%{opacity:.15}}
+.mx-skyline .win{fill:#ffb35c;opacity:.7}
+.mx-skyline .win-line{stroke:#ffb35c;stroke-width:1.2;opacity:.55;fill:none}
+.mx-skyline .edge{stroke:rgba(242,237,230,.14);stroke-width:1;fill:none}
+.mx-skyline .stack{fill:#1f1a23}
+.mx-skyline .rimlight{stroke:rgba(255,140,80,.32);stroke-width:1.2;fill:none}
+.mx-skyline .band{stroke:rgba(242,237,230,.08);stroke-width:2;fill:none}
+.mx-skyline .rig{stroke:#141117;stroke-width:1.6;fill:none}
+.mx-skyline .slag{fill:#0d0b0d}
+.mx-skyline .glow{fill:url(#mx-glow);animation:mx-pulse 4.2s ease-in-out infinite}
+.mx-skyline .pour{stroke:url(#mx-pour);stroke-width:3.2;stroke-linecap:round;fill:none;filter:drop-shadow(0 0 4px rgba(255,110,40,.8))}
+@keyframes mx-pulse{50%{opacity:.6}}
+.mx-skyline .plume circle{fill:rgba(210,200,195,.07);transform-box:fill-box;transform-origin:center;animation:mx-steam 7s linear infinite}
+.mx-skyline .plume circle:nth-child(2){animation-delay:-2.3s}.mx-skyline .plume circle:nth-child(3){animation-delay:-4.6s}
+.mx-skyline .p2 circle{animation-duration:8.5s}
+@keyframes mx-steam{0%{transform:translate(0,6px) scale(.6);opacity:0}20%{opacity:1}100%{transform:translate(14px,-34px) scale(1.9);opacity:0}}
+.mx-skyline .reflect{stroke:rgba(255,160,90,.14);stroke-width:3;fill:none}
+.mx-skyline .shimmer{stroke:rgba(255,190,140,.22);stroke-width:1;fill:none;animation:mx-shimmer 5s ease-in-out infinite}
+@keyframes mx-shimmer{50%{opacity:.35;transform:translateX(6px)}}
+.mx-skyline .birch{stroke:#bdb4a6;stroke-width:1.5;opacity:.38;fill:none}
 .mx-beacon{fill:var(--saffron);animation:mx-beacon 2.4s steps(1) infinite}
 @keyframes mx-beacon{50%{opacity:.15}}
 .mx-headframe path,.mx-headframe circle{fill:none;stroke:#0b0a0d;stroke-width:2;stroke-linejoin:round}
-.mx-headframe>path:first-child{stroke-width:4}
+.mx-headframe .hf-main{stroke-width:4}
 .mx-headframe .fill{fill:#0b0a0d;stroke:none}
+.mx-headframe .win{stroke:none}
+.mx-headframe .sheave{transform-box:fill-box;transform-origin:center;animation:mx-spin 6s linear infinite}
+.mx-headframe .sheave+.sheave{animation-direction:reverse;animation-duration:4.4s}
+@keyframes mx-spin{to{transform:rotate(360deg)}}
 .mx-nickel .coin{fill:#1c1b20}
 .mx-nickel .rim{fill:none;stroke:rgba(242,237,230,.16);stroke-width:1.5}
 .mx-nickel .rim.faint{stroke:rgba(242,237,230,.07)}
+.mx-sky .lay-far{transform:translateY(calc(var(--sh,0) * .32px))}
+.mx-sky .lay-mid{transform:translateY(calc(var(--sh,0) * .16px))}
+.mx-sky .lay-lake{transform:translateY(calc(var(--sh,0) * .05px))}
 
 .mx-gauge{position:fixed;z-index:3;top:calc(96px + env(safe-area-inset-top,0px));right:var(--mx-edge);text-align:right;pointer-events:none;opacity:0;transform:translateY(-8px);transition:opacity .8s,transform .8s var(--ease-out)}
 .mx-below .mx-gauge{opacity:1;transform:none}
@@ -70,7 +98,7 @@ html.mx-dragging,html.mx-dragging .mx-scene{cursor:grabbing}
 .is-on .mx-formula,.is-on .mx-text,.is-on .mx-lede,.is-on .mx-note,.is-on .mx-found,.is-on .mx-go,.is-on .mx-sources{opacity:1;transform:none;transition:opacity .5s .25s,transform .5s .25s var(--ease-out)}
 .is-on .mx-text,.is-on .mx-lede{transition-delay:.32s}.is-on .mx-note,.is-on .mx-found{transition-delay:.42s}.is-on .mx-go,.is-on .mx-sources{transition-delay:.52s}
 
-.mx-hero .mx-copy{bottom:14vh}
+.mx-hero .mx-copy{top:max(18vh,120px);bottom:auto}
 .mx-hero .mx-lede{max-width:34ch}
 .mx-hint{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));display:inline-flex;align-items:center;gap:10px;font-size:var(--mx-meta);color:rgba(242,237,230,.7);transform:translateX(-50%);transition:opacity .6s,color .3s;text-shadow:var(--mx-shadow)}
 .mx-hint svg{width:16px;height:16px;animation:mx-nudge 2.4s var(--ease-in-out) infinite}
@@ -90,6 +118,42 @@ html.mx-dragging,html.mx-dragging .mx-scene{cursor:grabbing}
 .mx-sources a{color:rgba(242,237,230,.6);text-decoration:underline;text-underline-offset:2px}
 .mx-sources a:hover{color:var(--paper)}
 
+/* ---------- The mines, to scale ---------- */
+.mx-scene.mx-mines::before{content:'';position:absolute;inset:0;background:radial-gradient(55% 70% at 68% 52%,rgba(5,5,6,.62),rgba(5,5,6,0) 78%);pointer-events:none}
+html:has(.mx-scene.mx-mines.is-on) .mx-mark b{opacity:0}
+.mx-shafts{position:absolute;right:calc(var(--mx-edge) + 80px);top:52%;width:min(calc(66vw - var(--mx-edge) * 2 - 130px),80vh);height:auto;transform:translateY(-50%);overflow:visible;pointer-events:none}
+.mx-scene.mx-mines .mx-copy{width:min(34vw,520px)}
+.mx-scene.mx-mines .mx-name{font-size:calc(var(--mx-title) * .62);max-width:min(34vw,520px)}
+.mx-shafts .mc-ground{stroke:rgba(242,237,230,.35);stroke-width:1.2}
+.mx-shafts .mc-frame,.mx-shafts .mc-wheel{fill:none;stroke:rgba(242,237,230,.6);stroke-width:1.6}
+.mx-shafts .mc-shaft{stroke:rgba(242,237,230,.75);stroke-width:2.4;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.6s var(--mx-in)}
+.mx-shafts .mc-level{stroke:rgba(242,237,230,.35);stroke-width:1.2;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .6s 1.2s}
+.mx-shafts .mc-light{fill:#ffb35c;opacity:0;transition:opacity .6s 1.5s}
+.mx-shafts .mc-cage{fill:var(--paper);opacity:0;transition:opacity .6s 1.4s}
+.mx-shafts .mc-name{font:500 22px var(--font);fill:rgba(242,237,230,.72);opacity:0;transition:opacity .6s 1.3s}
+.mx-shafts .mc-depth{font:400 17px var(--mono);fill:rgba(242,237,230,.5);opacity:0;transition:opacity .6s 1.4s}
+.mx-shafts .deepest .mc-shaft{stroke:var(--paper);stroke-width:3}
+.mx-shafts .deepest .mc-name{fill:var(--paper)}
+.mx-shafts .mc-mine:nth-child(3) .mc-shaft{transition-delay:.12s}.mx-shafts .mc-mine:nth-child(4) .mc-shaft{transition-delay:.24s}.mx-shafts .mc-mine:nth-child(5) .mc-shaft{transition-delay:.36s}.mx-shafts .mc-mine:nth-child(6) .mc-shaft{transition-delay:.48s}
+.mx-shafts .mc-snolab circle{fill:none;stroke:#f5b335;stroke-width:1.6}
+.mx-shafts .mc-snolab text{font:400 15px var(--mono);fill:#f5b335;letter-spacing:.08em}
+.mx-shafts .mc-snolab,.mx-shafts .mc-drift,.mx-shafts .mc-miner,.mx-shafts .mc-loader{opacity:0;transition:opacity .8s 1.8s}
+.mx-shafts .mc-drift path{stroke:rgba(242,237,230,.5);stroke-width:7;stroke-linecap:round;opacity:.35}
+.mx-shafts .mc-miner .hat{fill:#f2ede6}.mx-shafts .mc-miner .body{fill:#ff7a2f}.mx-shafts .mc-miner .legs,.mx-shafts .mc-miner .drill path{stroke:#b9b2a8;stroke-width:1.6}
+.mx-shafts .mc-miner .beam,.mx-shafts .mc-loader .beam{fill:#ffd58a;opacity:.55}
+.mx-shafts .spark{fill:#ffd58a}
+.mx-shafts .mc-loader .hull{fill:#f5b335}.mx-shafts .mc-loader .bucket,.mx-shafts .mc-loader .cab{fill:#d9cfbf}.mx-shafts .mc-loader .wheel{fill:#1a1816;stroke:#5c5650;stroke-width:1}
+.mx-shafts .mc-loader .beam{opacity:.3}
+.is-on .mx-shafts .mc-shaft,.is-on .mx-shafts .mc-level{stroke-dashoffset:0}
+.is-on .mx-shafts .mc-light{opacity:.8}.is-on .mx-shafts .mc-cage{opacity:.95}.is-on .mx-shafts .mc-name,.is-on .mx-shafts .mc-depth,.is-on .mx-shafts .mc-snolab,.is-on .mx-shafts .mc-drift,.is-on .mx-shafts .mc-miner,.is-on .mx-shafts .mc-loader{opacity:1}
+.mx-links{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:1.4em;opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s}
+.is-on .mx-links{opacity:1;transform:none;transition:opacity .5s .55s,transform .5s .55s var(--ease-out)}
+.mx-links .mx-go{opacity:1;transform:none}
+
+/* Without JavaScript every scene simply reads top to bottom. */
+.no-js .mx-name i,.no-js .mx-formula,.no-js .mx-text,.no-js .mx-lede,.no-js .mx-note,.no-js .mx-found,.no-js .mx-go,.no-js .mx-sources,.no-js .mx-links{opacity:1;filter:none;transform:none}
+.no-js .mx-shafts *{opacity:1;stroke-dashoffset:0}
+
 html:has(.mx) .site-footer{position:relative;z-index:4;scroll-snap-align:end}
 
 @media (max-width:700px){
@@ -99,13 +163,19 @@ html:has(.mx) .site-footer{position:relative;z-index:4;scroll-snap-align:end}
   .mx-rail-now{right:-11px;width:22px}
   .mx-mark b{display:none}
   .mx-copy,.mx-end .mx-copy{left:16px;right:76px;bottom:16vh;width:auto}
-  .mx-hero .mx-copy{bottom:18vh}
+  .mx-hero .mx-copy{top:max(15vh,100px);bottom:auto}
   .mx-name{font-stretch:75%;max-width:calc(100vw - 32px)}
   .mx-text,.mx-lede{max-width:32ch}
   .mx-end .mx-copy{bottom:8vh;right:56px}
+  .mx-shafts{left:12px;right:auto;top:146px;width:calc(100% - 76px);max-height:44vh;transform:none}
+  .mx-scene.mx-mines .mx-copy{width:auto}
+  .mx-scene.mx-robot .mx-copy{bottom:7vh}
+  .mx-scene.mx-mines .mx-name{font-size:var(--mx-title);max-width:calc(100vw - 92px)}
+  .mx-scene.mx-mines .mx-copy{bottom:8vh}
   .mx-end .mx-name{font-size:clamp(34px,10vw,56px)}
 }
 @media (prefers-reduced-motion:reduce){
+  .mx-skyline *,.mx-headframe .sheave{animation:none!important}
   html:has(.mx){scroll-behavior:auto}
   .mx-name i,.is-on .mx-name i,.mx-scene:not(.is-on) .mx-name i{transform:none;filter:none;transition:opacity .2s;transition-delay:0s!important}
   .mx-hint svg,.mx-beacon{animation:none}

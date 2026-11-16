@@ -32,24 +32,33 @@ function syncMarks(d){
 }
 
 let stage=null,shown=-1,depth=depths[0],last=performance.now(),started=false;
+const robotAt=scenes.findIndex(s=>s.dataset.specimen==='robot'),mines=document.querySelector('.mx-shafts');
+mines?.pauseAnimations?.();
 function show(i){
   if(i===shown)return;shown=i;
   scenes.forEach((s,k)=>s.classList.toggle('is-on',k===i));
   stage?.show(scenes[i].dataset.specimen||null);
+  // Fetch the robot model a few stops early; animate the shafts only while they are on screen.
+  if(robotAt>=0&&i>=robotAt-3)stage?.preload('robot');
+  if(mines){const on=scenes[i].contains(mines)&&!reduced.matches;on?mines.unpauseAnimations():mines.pauseAnimations();}
   if(i>0&&!started){started=true;html.classList.add('mx-started');}
   html.classList.toggle('mx-below',i>0);
 }
+let drawn=NaN,skyH=sky.offsetHeight,vh=innerHeight;
+addEventListener('resize',()=>{skyH=sky.offsetHeight;vh=innerHeight;drawn=NaN;});
 function tick(t){
   requestAnimationFrame(tick);
   const dt=Math.min(.1,(t-last)/1000);last=t;
-  const target=targetDepth();depth=reduced.matches?target:depth+(target-depth)*(1-Math.exp(-dt*7));
+  const target=targetDepth();depth=reduced.matches||Math.abs(target-depth)<.02?target:depth+(target-depth)*(1-Math.exp(-dt*7));
+  show(activeIndex());
+  if(depth===drawn)return;drawn=depth;
   num.textContent=fmt(depth);
   const p=Math.max(0,Math.min(1,depth/MAX));fill.style.transform=`scaleY(${p})`;now.style.top=(p*100)+'%';
   syncMarks(depth);
-  // Keep the skyline standing on the shader's ground line.
-  const ground=innerHeight*(.5-depth/72);sky.style.transform=`translate3d(0,${Math.round(ground-sky.offsetHeight)}px,0)`;sky.classList.toggle('gone',ground<-40);
+  // Keep the skyline standing on the shader's ground line; its layers drift apart for depth.
+  const ground=vh*(.5-depth/72),gone=ground<-40;sky.classList.toggle('gone',gone);
+  if(!gone){sky.style.transform=`translate3d(0,${Math.round(ground-skyH)}px,0)`;sky.style.setProperty('--sh',Math.max(0,vh*(.5+16/72)-ground).toFixed(1));}
   stage?.setDepth(depth);
-  show(activeIndex());
 }
 requestAnimationFrame(tick);
 
